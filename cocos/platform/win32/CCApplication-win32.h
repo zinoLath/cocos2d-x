@@ -48,7 +48,7 @@ public:
     /**
     @brief    Run the message loop.
     */
-    int run();
+    virtual int run();
 
     /**
     @brief    Get current application instance.
