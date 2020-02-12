@@ -363,6 +363,18 @@ public class Cocos2dxGLSurfaceView extends GLSurfaceView {
 
     @Override
     public boolean onKeyDown(final int pKeyCode, final KeyEvent pKeyEvent) {
+        if ((KeyEvent.KEYCODE_0 <= pKeyCode && pKeyCode <= KeyEvent.KEYCODE_9)
+                || (KeyEvent.KEYCODE_A <= pKeyCode && pKeyCode <= KeyEvent.KEYCODE_Z)
+                || (KeyEvent.KEYCODE_COMMA <= pKeyCode && pKeyCode <= KeyEvent.KEYCODE_AT)
+                || (KeyEvent.KEYCODE_ESCAPE <= pKeyCode && pKeyCode <= KeyEvent.KEYCODE_CTRL_RIGHT)) {
+            this.queueEvent(new Runnable() {
+                @Override
+                public void run() {
+                    Cocos2dxGLSurfaceView.this.mCocos2dxRenderer.handleKeyDown(pKeyCode);
+                }
+            });
+            return true;
+        }
         switch (pKeyCode) {
             case KeyEvent.KEYCODE_BACK:
                 Cocos2dxVideoHelper.mVideoHandler.sendEmptyMessage(Cocos2dxVideoHelper.KeyEventBack);
@@ -388,6 +400,18 @@ public class Cocos2dxGLSurfaceView extends GLSurfaceView {
 
     @Override
     public boolean onKeyUp(final int keyCode, KeyEvent event) {
+        if ((KeyEvent.KEYCODE_0 <= pKeyCode && pKeyCode <= KeyEvent.KEYCODE_9)
+                || (KeyEvent.KEYCODE_A <= pKeyCode && pKeyCode <= KeyEvent.KEYCODE_Z)
+                || (KeyEvent.KEYCODE_COMMA <= pKeyCode && pKeyCode <= KeyEvent.KEYCODE_AT)
+                || (KeyEvent.KEYCODE_ESCAPE <= pKeyCode && pKeyCode <= KeyEvent.KEYCODE_CTRL_RIGHT)) {
+            this.queueEvent(new Runnable() {
+                @Override
+                public void run() {
+                    Cocos2dxGLSurfaceView.this.mCocos2dxRenderer.handleKeyUp(pKeyCode);
+                }
+            });
+            return true;
+        }
         switch (keyCode) {
             case KeyEvent.KEYCODE_BACK:
             case KeyEvent.KEYCODE_MENU:
