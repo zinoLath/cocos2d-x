@@ -39,6 +39,10 @@ THE SOFTWARE.
 #include <windows.h>
 #include "ui/UIHelper.h"
 
+#ifdef _WIN64
+#define GWL_WNDPROC GWLP_WNDPROC
+#define GWL_USERDATA GWLP_USERDATA
+#endif
 
 NS_CC_BEGIN
 
