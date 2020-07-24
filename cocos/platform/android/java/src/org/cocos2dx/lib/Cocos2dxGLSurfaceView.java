@@ -400,14 +400,14 @@ public class Cocos2dxGLSurfaceView extends GLSurfaceView {
 
     @Override
     public boolean onKeyUp(final int keyCode, KeyEvent event) {
-        if ((KeyEvent.KEYCODE_0 <= pKeyCode && pKeyCode <= KeyEvent.KEYCODE_9)
-                || (KeyEvent.KEYCODE_A <= pKeyCode && pKeyCode <= KeyEvent.KEYCODE_Z)
-                || (KeyEvent.KEYCODE_COMMA <= pKeyCode && pKeyCode <= KeyEvent.KEYCODE_AT)
-                || (KeyEvent.KEYCODE_ESCAPE <= pKeyCode && pKeyCode <= KeyEvent.KEYCODE_CTRL_RIGHT)) {
+        if ((KeyEvent.KEYCODE_0 <= keyCode && keyCode <= KeyEvent.KEYCODE_9)
+                || (KeyEvent.KEYCODE_A <= keyCode && keyCode <= KeyEvent.KEYCODE_Z)
+                || (KeyEvent.KEYCODE_COMMA <= keyCode && keyCode <= KeyEvent.KEYCODE_AT)
+                || (KeyEvent.KEYCODE_ESCAPE <= keyCode && keyCode <= KeyEvent.KEYCODE_CTRL_RIGHT)) {
             this.queueEvent(new Runnable() {
                 @Override
                 public void run() {
-                    Cocos2dxGLSurfaceView.this.mCocos2dxRenderer.handleKeyUp(pKeyCode);
+                    Cocos2dxGLSurfaceView.this.mCocos2dxRenderer.handleKeyUp(keyCode);
                 }
             });
             return true;
