@@ -361,12 +361,39 @@ public class Cocos2dxGLSurfaceView extends GLSurfaceView {
         }
     }
 
+    protected boolean isIgnoredKey(final int keyCode) {
+        if ((keyCode <= KeyEvent.KEYCODE_HOME)
+                || (keyCode == KeyEvent.KEYCODE_CALL)
+                || (keyCode == KeyEvent.KEYCODE_ENDCALL)
+                || (keyCode == KeyEvent.KEYCODE_VOLUME_UP)
+                || (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN)
+                || (keyCode == KeyEvent.KEYCODE_POWER)
+                || (keyCode == KeyEvent.KEYCODE_CAMERA)
+                || (keyCode == KeyEvent.KEYCODE_SYM)
+                || (keyCode == KeyEvent.KEYCODE_EXPLORER)
+                || (keyCode == KeyEvent.KEYCODE_ENVELOPE)
+                || (keyCode == KeyEvent.KEYCODE_NUM)
+                || (keyCode == KeyEvent.KEYCODE_HEADSETHOOK)
+                || (keyCode == KeyEvent.KEYCODE_FOCUS)
+                || (keyCode == KeyEvent.KEYCODE_MUTE)
+                || (keyCode == KeyEvent.KEYCODE_PICTSYMBOLS)
+                || (keyCode == KeyEvent.KEYCODE_SWITCH_CHARSET)
+                || (keyCode == KeyEvent.KEYCODE_NUM_LOCK)
+                || (KeyEvent.KEYCODE_VOLUME_MUTE <= keyCode && keyCode <= KeyEvent.KEYCODE_APP_SWITCH)
+                || (KeyEvent.KEYCODE_LANGUAGE_SWITCH <= keyCode && keyCode <= KeyEvent.KEYCODE_HELP)
+                || (KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD <= keyCode)
+            )
+        {
+            return true;
+        }
+        return false;
+    }
+
     @Override
     public boolean onKeyDown(final int pKeyCode, final KeyEvent pKeyEvent) {
-        if ((KeyEvent.KEYCODE_0 <= pKeyCode && pKeyCode <= KeyEvent.KEYCODE_9)
-                || (KeyEvent.KEYCODE_A <= pKeyCode && pKeyCode <= KeyEvent.KEYCODE_Z)
-                || (KeyEvent.KEYCODE_COMMA <= pKeyCode && pKeyCode <= KeyEvent.KEYCODE_AT)
-                || (KeyEvent.KEYCODE_ESCAPE <= pKeyCode && pKeyCode <= KeyEvent.KEYCODE_CTRL_RIGHT)) {
+        if (pKeyCode == KeyEvent.KEYCODE_BACK)
+            Cocos2dxVideoHelper.mVideoHandler.sendEmptyMessage(Cocos2dxVideoHelper.KeyEventBack);
+        if (!isIgnoredKey(pKeyCode)) {
             this.queueEvent(new Runnable() {
                 @Override
                 public void run() {
@@ -375,35 +402,12 @@ public class Cocos2dxGLSurfaceView extends GLSurfaceView {
             });
             return true;
         }
-        switch (pKeyCode) {
-            case KeyEvent.KEYCODE_BACK:
-                Cocos2dxVideoHelper.mVideoHandler.sendEmptyMessage(Cocos2dxVideoHelper.KeyEventBack);
-            case KeyEvent.KEYCODE_MENU:
-            case KeyEvent.KEYCODE_DPAD_LEFT:
-            case KeyEvent.KEYCODE_DPAD_RIGHT:
-            case KeyEvent.KEYCODE_DPAD_UP:
-            case KeyEvent.KEYCODE_DPAD_DOWN:
-            case KeyEvent.KEYCODE_ENTER:
-            case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
-            case KeyEvent.KEYCODE_DPAD_CENTER:
-                this.queueEvent(new Runnable() {
-                    @Override
-                    public void run() {
-                        Cocos2dxGLSurfaceView.this.mCocos2dxRenderer.handleKeyDown(pKeyCode);
-                    }
-                });
-                return true;
-            default:
-                return super.onKeyDown(pKeyCode, pKeyEvent);
-        }
+        return super.onKeyDown(pKeyCode, pKeyEvent);
     }
 
     @Override
     public boolean onKeyUp(final int keyCode, KeyEvent event) {
-        if ((KeyEvent.KEYCODE_0 <= keyCode && keyCode <= KeyEvent.KEYCODE_9)
-                || (KeyEvent.KEYCODE_A <= keyCode && keyCode <= KeyEvent.KEYCODE_Z)
-                || (KeyEvent.KEYCODE_COMMA <= keyCode && keyCode <= KeyEvent.KEYCODE_AT)
-                || (KeyEvent.KEYCODE_ESCAPE <= keyCode && keyCode <= KeyEvent.KEYCODE_CTRL_RIGHT)) {
+        if (!isIgnoredKey(keyCode)) {
             this.queueEvent(new Runnable() {
                 @Override
                 public void run() {
@@ -412,26 +416,7 @@ public class Cocos2dxGLSurfaceView extends GLSurfaceView {
             });
             return true;
         }
-        switch (keyCode) {
-            case KeyEvent.KEYCODE_BACK:
-            case KeyEvent.KEYCODE_MENU:
-            case KeyEvent.KEYCODE_DPAD_LEFT:
-            case KeyEvent.KEYCODE_DPAD_RIGHT:
-            case KeyEvent.KEYCODE_DPAD_UP:
-            case KeyEvent.KEYCODE_DPAD_DOWN:
-            case KeyEvent.KEYCODE_ENTER:
-            case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
-            case KeyEvent.KEYCODE_DPAD_CENTER:
-                this.queueEvent(new Runnable() {
-                    @Override
-                    public void run() {
-                        Cocos2dxGLSurfaceView.this.mCocos2dxRenderer.handleKeyUp(keyCode);
-                    }
-                });
-                return true;
-            default:
-                return super.onKeyUp(keyCode, event);
-        }
+        return super.onKeyUp(keyCode, event);
     }
 
     // ===========================================================
