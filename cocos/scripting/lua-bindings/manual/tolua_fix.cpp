@@ -165,6 +165,18 @@ TOLUA_API int toluafix_remove_ccobject_by_refid(lua_State* L, int refid)
         return -3;
     }
 
+    lua_pushstring(L, ".dtor");
+    lua_gettable(L, -2);
+    if(lua_isfunction(L, -1))
+    {
+        lua_pushvalue(L, -2);
+        lua_call(L, 1, 0);
+    }
+    else
+    {
+        lua_pop(L, 1);
+    }
+
     // cleanup peertable
     lua_pushvalue(L, LUA_REGISTRYINDEX);
     lua_setfenv(L, -2);
