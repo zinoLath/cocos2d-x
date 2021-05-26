@@ -1037,4 +1037,25 @@ void Renderer::popStateBlock()
     _stateBlockStack.pop_back();
 }
 
+std::unordered_map<std::string, Value> Renderer::getDebugInfo()
+{
+    std::unordered_map<std::string, Value> ret;
+    ret["queuedTriangleCommands"] = std::string(
+	    (char*)_queuedTriangleCommands.data(),
+	    _queuedTriangleCommands.size() * sizeof(void*));
+    ret["verts"] = std::string((char*)&_verts[0], sizeof(_verts));
+    ret["indices"] = std::string((char*)&_indices[0], sizeof(_indices));
+#define INSERT_NUMBER(_NAME, _VAR) ret[(_NAME)] = _VAR
+    INSERT_NUMBER("queuedTotalVertexCount", _queuedTotalVertexCount);
+    INSERT_NUMBER("queuedTotalIndexCount", _queuedTotalIndexCount);
+    INSERT_NUMBER("queuedVertexCount", _queuedVertexCount);
+    INSERT_NUMBER("queuedIndexCount", _queuedIndexCount);
+    INSERT_NUMBER("filledIndex", _filledIndex);
+    INSERT_NUMBER("filledVertex", _filledVertex);
+    INSERT_NUMBER("drawnBatches", _drawnBatches);
+    INSERT_NUMBER("drawnVertices", _drawnVertices);
+#undef INSERT_NUMBER
+    return ret;
+}
+
 NS_CC_END

@@ -32,6 +32,7 @@
 #include "platform/CCPlatformMacros.h"
 #include "renderer/CCRenderCommand.h"
 #include "renderer/backend/Types.h"
+#include "base/CCValue.h"
 
 /**
  * @addtogroup renderer
@@ -404,7 +405,9 @@ public:
 
     /** returns whether or not a rectangle is visible or not */
     bool checkVisibility(const Mat4& transform, const Size& size);
-    
+
+    std::unordered_map<std::string, Value> getDebugInfo();
+
 protected:
     friend class Director;
     friend class GroupCommand;
