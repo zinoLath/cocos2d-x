@@ -287,6 +287,13 @@ bool GLViewImpl::initWithRect(const std::string& viewName, Rect rect, float fram
 
     _frameZoomFactor = frameZoomFactor;
 
+#ifdef CC_USE_ANGLE
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
+    glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_EGL_CONTEXT_API);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+#endif
+
     glfwWindowHint(GLFW_RESIZABLE,resizable?GL_TRUE:GL_FALSE);
     glfwWindowHint(GLFW_RED_BITS,_glContextAttrs.redBits);
     glfwWindowHint(GLFW_GREEN_BITS,_glContextAttrs.greenBits);
@@ -357,27 +364,30 @@ bool GLViewImpl::initWithRect(const std::string& viewName, Rect rect, float fram
     setFrameSize(rect.size.width, rect.size.height);
 
 #if (CC_TARGET_PLATFORM != CC_PLATFORM_MAC)
-    
-    // check OpenGL version at first
-    const GLubyte* glVersion = glGetString(GL_VERSION);
 
-    if ( utils::atof((const char*)glVersion) < 1.5 )
+    initGlew();
+
+    // check OpenGL version at first
+    const char* glVersion = (const char*)glGetString(GL_VERSION);
+
+    if (!glVersion || (utils::atof(glVersion) < 1.5 && nullptr == strstr(glVersion, "ANGLE")))
     {
         char strComplain[256] = {0};
         sprintf(strComplain,
                 "OpenGL 1.5 or higher is required (your version is %s). Please upgrade the driver of your video card.",
-                glVersion);
-        ccMessageBox(strComplain, "OpenGL version too old");
+                glVersion ? glVersion : "unknown");
+        ccMessageBox(strComplain, "Invalid OpenGL version");
         return false;
     }
 
-    initGlew();
-
+#ifndef CC_USE_ANGLE
     // Enable point size by default.
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
     
     if(_glContextAttrs.multisamplingCount > 0)
         glEnable(GL_MULTISAMPLE);
+#endif
+    CHECK_GL_ERROR_DEBUG();
 
 //    // GLFW v3.2 no longer emits "onGLFWWindowSizeFunCallback" at creation time. Force default viewport:
 //    setViewPortInPoints(0, 0, neededWidth, neededHeight);
@@ -940,7 +950,7 @@ void GLViewImpl::onGLFWWindowFocusCallback(GLFWwindow* /*window*/, int focused)
     }
 }
 
-#if (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32)
+#if (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32) && !defined(CC_USE_ANGLE)
 static bool glew_dynamic_binding()
 {
     const char *gl_extensions = (const char*)glGetString(GL_EXTENSIONS);
@@ -1007,16 +1017,16 @@ static bool glew_dynamic_binding()
 // helper
 bool GLViewImpl::initGlew()
 {
-
 #if (CC_TARGET_PLATFORM != CC_PLATFORM_MAC)
-    GLenum GlewInitResult = glewInit();
-    if (GLEW_OK != GlewInitResult)
+
+#ifndef CC_USE_ANGLE
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
-        ccMessageBox((char *)glewGetErrorString(GlewInitResult), "OpenGL error");
+        ccMessageBox("glad: Failed to Load GL", "OpenGL error");
         return false;
     }
 
-    if (GLEW_ARB_vertex_shader && GLEW_ARB_fragment_shader)
+    if (GL_ARB_vertex_shader && GL_ARB_fragment_shader)
     {
         log("Ready for GLSL");
     }
@@ -1025,16 +1035,6 @@ bool GLViewImpl::initGlew()
         log("Not totally ready :(");
     }
 
-    if (glewIsSupported("GL_VERSION_2_0"))
-    {
-        log("Ready for OpenGL 2.0");
-    }
-    else
-    {
-        log("OpenGL 2.0 not supported");
-    }
-
-
 #if (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32)
     if(glew_dynamic_binding() == false)
     {
@@ -1042,6 +1042,13 @@ bool GLViewImpl::initGlew()
         return false;
     }
 #endif //#if (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32)
+#else
+    if (!gladLoadGLES2Loader((GLADloadproc)glfwGetProcAddress))
+    {
+        ccMessageBox("glad: Failed to Load GLES2", "OpenGL error");
+        return false;
+    }
+#endif // !CC_USE_ANGLE
 
 #endif //#if (CC_TARGET_PLATFORM != CC_PLATFORM_MAC)
 
