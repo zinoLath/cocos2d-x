@@ -128,9 +128,22 @@ void ProgramGL::compileProgram()
     glGetProgramiv(_program, GL_LINK_STATUS, &status);
     if (GL_FALSE == status)
     {
-        printf("cocos2d: ERROR: %s: failed to link program ", __FUNCTION__);
+        log("%s: failed to link shader", __FUNCTION__);
+        GLint logLength = 0;
+        glGetProgramiv(_program, GL_INFO_LOG_LENGTH, &logLength);
+        if (logLength > 0)
+        {
+            std::vector<char> info;
+            info.resize(logLength);
+            glGetProgramInfoLog(_program, logLength, nullptr, info.data());
+            info.push_back('0');
+            log("Error info:\n%s", info.data());
+        }
+        log("Vertex shader:\n%s\n", _vertexShader.c_str());
+        log("Fragment shader:\n%s\n", _fragmentShader.c_str());
         glDeleteProgram(_program);
         _program = 0;
+        CCASSERT(false, "Shader link failed!");
     }
 }
 
