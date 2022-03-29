@@ -876,7 +876,9 @@ UniformLocation ProgramGFX::getUniformLocation(const std::string& uniform) const
 	const auto it = activeUniformLocations.find(uniform);
 	if (it != activeUniformLocations.end())
 		return it->second;
+#if defined(CC_DEBUG) && (CC_DEBUG > 0)
 	log("%s: no uniform %s", __FUNCTION__, uniform.c_str());
+#endif
 	return {};
 }
 
