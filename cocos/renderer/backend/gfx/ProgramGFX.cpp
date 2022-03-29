@@ -7,14 +7,12 @@
 #include "ShaderModuleGFX.h"
 #include "UtilsGFX.h"
 #include "glslang/glslang/Public/ShaderLang.h"
-#include "glslang/StandAlone/ResourceLimits.h"
 #include "glslang/SPIRV/GlslangToSpv.h"
 #include "spirv_cross/spirv_msl.hpp"
 #include "TextureGFX.h"
 #include <regex>
 
 using namespace cc;
-
 
 CC_BACKEND_BEGIN
 

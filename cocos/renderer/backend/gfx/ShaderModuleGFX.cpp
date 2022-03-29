@@ -2,7 +2,6 @@
 #include "platform/CCPlatformMacros.h"
 #include "base/ccMacros.h"
 #include "UtilsGFX.h"
-#include "glslang/StandAlone/ResourceLimits.h"
 
 using namespace cc;
 
@@ -73,7 +72,7 @@ void ShaderModuleGFX::init()
 	// -> SPIR-V 1.Y
 	_glslangShader->setEnvTarget(glslang::EshTargetSpv, UtilsGFX::toGLSLangTargetVersion(vkMinorVersion));
 	const bool success = _glslangShader->parse(
-		&glslang::DefaultTBuiltInResource, clientInputSemanticsVersion, isForwardCompatible, controls);
+		&UtilsGFX::DefaultTBuiltInResource, clientInputSemanticsVersion, isForwardCompatible, controls);
 	if (!success)
 	{
 		log("%s: GLSLang Parsing Failed:\n%s\n%s",

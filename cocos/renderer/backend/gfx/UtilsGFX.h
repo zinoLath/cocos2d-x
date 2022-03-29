@@ -59,6 +59,8 @@ public:
 		uint32_t version,
 		bool isES
 	);
+
+	static const TBuiltInResource DefaultTBuiltInResource;
 };
 
 CC_BACKEND_END
