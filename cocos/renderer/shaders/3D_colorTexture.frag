@@ -25,16 +25,26 @@
 
 const char* CC3D_colorTexture_frag = R"(
 
-#ifdef GL_ES
-varying mediump vec2 TextureCoordOut;
+#if __VERSION__ >= 300
+layout(std140, binding=1) uniform FSBlock
+{
+    vec4 u_color;
+};
+layout(location=0) in mediump vec2 TextureCoordOut;
+layout(binding=2) uniform sampler2D u_texture; 
+layout(location=0) out vec4 cc_FragColor;
 #else
-varying vec2 TextureCoordOut;
-#endif
 uniform vec4 u_color;
+varying mediump vec2 TextureCoordOut;
 uniform sampler2D u_texture; 
+#endif
 
 void main(void)
 {
+#if __VERSION__ >= 300
+    cc_FragColor = texture(u_texture, TextureCoordOut) * u_color;
+#else
     gl_FragColor = texture2D(u_texture, TextureCoordOut) * u_color;
+#endif
 }
 )";

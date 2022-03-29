@@ -28,16 +28,37 @@ const char* labelDistanceFieldGlow_frag = R"(
 precision lowp float;
 #endif
 
-varying vec4 v_fragmentColor;
-varying vec2 v_texCoord;
+#if __VERSION__ >= 300
+
+layout(std140, binding=1) uniform FSBlock
+{
+    vec4 u_effectColor;
+    vec4 u_textColor;
+};
+layout(binding=2) uniform sampler2D u_texture;
+
+layout(location=0) in vec4 v_fragmentColor;
+layout(location=1) in vec2 v_texCoord;
+layout(location=0) out vec4 cc_FragColor;
+
+#else
 
 uniform vec4 u_effectColor;
 uniform vec4 u_textColor;
 uniform sampler2D u_texture;
 
+varying vec4 v_fragmentColor;
+varying vec2 v_texCoord;
+
+#endif
+
 void main()
 {
+#if __VERSION__ >= 300
+    float dist = texture(u_texture, v_texCoord).a;
+#else
     float dist = texture2D(u_texture, v_texCoord).a;
+#endif
     //TODO: Implementation 'fwidth' for glsl 1.0
     //float width = fwidth(dist);
     //assign width for constant will lead to a little bit fuzzy,it's temporary measure.
@@ -46,6 +67,10 @@ void main()
     //glow
     float mu = smoothstep(0.5, 1.0, sqrt(dist));
     vec4 color = u_effectColor*(1.0-alpha) + u_textColor*alpha;
+#if __VERSION__ >= 300
+    cc_FragColor = v_fragmentColor * vec4(color.rgb, max(alpha,mu)*color.a);
+#else
     gl_FragColor = v_fragmentColor * vec4(color.rgb, max(alpha,mu)*color.a);
+#endif
 }
 )";

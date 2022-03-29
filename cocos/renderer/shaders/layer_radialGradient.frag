@@ -28,6 +28,26 @@ const char* layer_radialGradient_frag = R"(
 precision highp float;
 #endif
 
+#if __VERSION__ >= 300
+
+layout(std140, binding=1) uniform FSBlock
+{
+    vec4 u_startColor;
+    vec4 u_endColor;
+    vec2 u_center;
+    float u_radius;
+    float u_expand;
+};
+
+#ifdef GL_ES
+layout(location=0) in lowp vec4 v_position;
+#else
+layout(location=0) in vec4 v_position;
+#endif
+layout(location=0) out vec4 cc_FragColor;
+
+#else
+
 uniform vec4 u_startColor;
 uniform vec4 u_endColor;
 uniform vec2 u_center;
@@ -40,9 +60,28 @@ varying lowp vec4 v_position;
 varying vec4 v_position;
 #endif
 
+#endif
+
 void main()
 {
     float d = distance(v_position.xy, u_center) / u_radius;
+#if __VERSION__ >= 300
+    if (d <= 1.0)
+    {
+        if (d <= u_expand)
+        {
+            cc_FragColor = u_startColor;
+        }
+        else
+        {
+            cc_FragColor = mix(u_startColor, u_endColor, (d - u_expand) / (1.0 - u_expand));
+        }
+    }
+    else
+    {
+        cc_FragColor = vec4(0.0, 0.0, 0.0, 0.0);
+    }
+#else
     if (d <= 1.0)
     {
         if (d <= u_expand)
@@ -58,5 +97,6 @@ void main()
     {
         gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0);
     }
+#endif
 }
 )";

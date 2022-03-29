@@ -25,6 +25,54 @@
 
 const char* CC3D_colorNormal_frag = R"(
 
+#if __VERSION__ >= 300
+
+layout(std140, binding=2) uniform CommonLightBlock
+{
+#if (MAX_DIRECTIONAL_LIGHT_NUM > 0)
+    vec3 u_DirLightSourceDirection[MAX_DIRECTIONAL_LIGHT_NUM];
+#endif
+#if (MAX_POINT_LIGHT_NUM > 0)
+    vec3 u_PointLightSourcePosition[MAX_POINT_LIGHT_NUM];
+#endif
+#if (MAX_SPOT_LIGHT_NUM > 0)
+    vec3 u_SpotLightSourcePosition[MAX_SPOT_LIGHT_NUM];
+    vec3 u_SpotLightSourceDirection[MAX_SPOT_LIGHT_NUM];
+#endif
+};
+layout(std140, binding=1) uniform FSBlock
+{
+    #if (MAX_DIRECTIONAL_LIGHT_NUM > 0)
+    vec3 u_DirLightSourceColor[MAX_DIRECTIONAL_LIGHT_NUM];
+    #endif
+    #if (MAX_POINT_LIGHT_NUM > 0)
+    vec3 u_PointLightSourceColor[MAX_POINT_LIGHT_NUM];
+    float u_PointLightSourceRangeInverse[MAX_POINT_LIGHT_NUM];
+    #endif
+    #if (MAX_SPOT_LIGHT_NUM > 0)
+    vec3 u_SpotLightSourceColor[MAX_SPOT_LIGHT_NUM];
+    float u_SpotLightSourceInnerAngleCos[MAX_SPOT_LIGHT_NUM];
+    float u_SpotLightSourceOuterAngleCos[MAX_SPOT_LIGHT_NUM];
+    float u_SpotLightSourceRangeInverse[MAX_SPOT_LIGHT_NUM];
+    #endif
+    vec3 u_AmbientLightSourceColor;
+    vec4 u_color;
+};
+
+layout(location=0) in mediump vec2 TextureCoordOut;
+#if MAX_POINT_LIGHT_NUM
+    layout(location=2) in mediump vec3 v_vertexToPointLightDirection[MAX_POINT_LIGHT_NUM];
+#endif
+#if MAX_SPOT_LIGHT_NUM
+    layout(location=3) in mediump vec3 v_vertexToSpotLightDirection[MAX_SPOT_LIGHT_NUM];
+#endif
+#if ((MAX_DIRECTIONAL_LIGHT_NUM > 0) || (MAX_POINT_LIGHT_NUM > 0) || (MAX_SPOT_LIGHT_NUM > 0))
+    layout(location=5) in mediump vec3 v_normal;
+#endif
+layout(location=0) out vec4 cc_FragColor;
+
+#else
+
 #if (MAX_DIRECTIONAL_LIGHT_NUM > 0)
 uniform vec3 u_DirLightSourceColor[MAX_DIRECTIONAL_LIGHT_NUM];
 uniform vec3 u_DirLightSourceDirection[MAX_DIRECTIONAL_LIGHT_NUM];
@@ -41,8 +89,8 @@ uniform float u_SpotLightSourceOuterAngleCos[MAX_SPOT_LIGHT_NUM];
 uniform float u_SpotLightSourceRangeInverse[MAX_SPOT_LIGHT_NUM];
 #endif
 uniform vec3 u_AmbientLightSourceColor;
+uniform vec4 u_color;
 
-#ifdef GL_ES
 varying mediump vec2 TextureCoordOut;
 #if MAX_POINT_LIGHT_NUM
 varying mediump vec3 v_vertexToPointLightDirection[MAX_POINT_LIGHT_NUM];
@@ -54,22 +102,7 @@ varying mediump vec3 v_vertexToSpotLightDirection[MAX_SPOT_LIGHT_NUM];
 varying mediump vec3 v_normal;
 #endif
 
-#else
-
-varying vec2 TextureCoordOut;
-#if MAX_POINT_LIGHT_NUM
-varying vec3 v_vertexToPointLightDirection[MAX_POINT_LIGHT_NUM];
 #endif
-#if MAX_SPOT_LIGHT_NUM
-varying vec3 v_vertexToSpotLightDirection[MAX_SPOT_LIGHT_NUM];
-#endif
-#if ((MAX_DIRECTIONAL_LIGHT_NUM > 0) || (MAX_POINT_LIGHT_NUM > 0) || (MAX_SPOT_LIGHT_NUM > 0))
-varying vec3 v_normal;
-#endif
-
-#endif
-
-uniform vec4 u_color;
 
 vec3 computeLighting(vec3 normalVector, vec3 lightDirection, vec3 lightColor, float attenuation)
 {
@@ -127,11 +160,18 @@ void main(void)
     }
 #endif
 
-#if ((MAX_DIRECTIONAL_LIGHT_NUM > 0) || (MAX_POINT_LIGHT_NUM > 0) || (MAX_SPOT_LIGHT_NUM > 0))
-    gl_FragColor = u_color * combinedColor;
+#if __VERSION__ >= 300
+    #if ((MAX_DIRECTIONAL_LIGHT_NUM > 0) || (MAX_POINT_LIGHT_NUM > 0) || (MAX_SPOT_LIGHT_NUM > 0))
+        cc_FragColor = u_color * combinedColor;
+    #else
+        cc_FragColor = u_color;
+    #endif
 #else
-    gl_FragColor = u_color;
+    #if ((MAX_DIRECTIONAL_LIGHT_NUM > 0) || (MAX_POINT_LIGHT_NUM > 0) || (MAX_SPOT_LIGHT_NUM > 0))
+        gl_FragColor = u_color * combinedColor;
+    #else
+        gl_FragColor = u_color;
+    #endif
 #endif
-
 }
 )";

@@ -25,6 +25,19 @@
 
 const char * cameraClear_frag = R"(
 
+#if __VERSION__ >= 300
+
+#ifdef GL_ES
+layout(location=0) in mediump vec2 v_texCoord;
+layout(location=1) in mediump vec4 v_color;
+#else
+layout(location=0) in vec2 v_texCoord;
+layout(location=1) in vec4 v_color;
+#endif
+layout(location=0) out vec4 cc_FragColor;
+
+#else
+
 #ifdef GL_ES
 varying mediump vec2 v_texCoord;
 varying mediump vec4 v_color;
@@ -33,9 +46,15 @@ varying vec2 v_texCoord;
 varying vec4 v_color;
 #endif
 
+#endif
+
 void main()
 {
+#if __VERSION__ >= 300
+    cc_FragColor = v_color;
+#else
     gl_FragColor = v_color;
+#endif
 }
 
 )";
