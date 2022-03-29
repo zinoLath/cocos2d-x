@@ -38,5 +38,22 @@ THE SOFTWARE.
 #include "platform/linux/CCGL-linux.h"
 #endif
 
+#ifndef GL_MULTISAMPLE
+#define GL_MULTISAMPLE GL_MULTISAMPLE_EXT
+#endif
+
+#ifndef GL_VERTEX_PROGRAM_POINT_SIZE
+#define GL_VERTEX_PROGRAM_POINT_SIZE 0x8642
+#endif
+
+#ifndef glDrawBuffer
+inline void _glDrawBufferImpl(GLenum buf) { glDrawBuffers(1, &buf); }
+#define glDrawBuffer _glDrawBufferImpl
+#endif
+
+#ifndef glClearDepth
+#define glClearDepth glClearDepthf
+#endif
+
 /// @endcond
 #endif /* __PLATFORM_CCPLATFORMDEFINE_H__*/
