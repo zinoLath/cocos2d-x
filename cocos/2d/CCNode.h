@@ -928,7 +928,7 @@ public:
     static void sortNodes(cocos2d::Vector<_T*>& nodes)
     {
         static_assert(std::is_base_of<Node, _T>::value, "Node::sortNodes: Only accept derived of Node!");
-#if CC_64BITS
+#if 0 // bad
         std::sort(std::begin(nodes), std::end(nodes), [](_T* n1, _T* n2) {
             return (n1->_localZOrder$Arrival < n2->_localZOrder$Arrival);
         });
