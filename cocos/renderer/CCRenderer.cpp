@@ -46,8 +46,99 @@
 #include "xxhash.h"
 
 #include "renderer/backend/Backend.h"
+#ifdef CC_USE_GFX
+#include "gfx-base/GFXDef-common.h"
+#include "renderer/backend/gfx/DeviceGFX.h"
+#endif
 
 NS_CC_BEGIN
+
+class TriangleBufferPool
+{
+public:
+    struct TriangleBuffer
+	{
+        backend::Buffer* vb = nullptr;
+        backend::Buffer* ib = nullptr;
+        bool used = false;
+	};
+    TriangleBuffer getBuffer(uint32_t vnum, uint32_t inum)
+    {
+    	constexpr auto vstride = sizeof(V3F_C4B_T2F);
+        constexpr auto istride = sizeof(uint16_t);
+        const auto vsize = vnum * vstride;
+        const auto isize = inum * vstride;
+        for (auto& it : buffers)
+        {
+            if (!it.second.used
+                && it.first >= vnum + inum
+                && it.second.vb->getSize() >= vsize
+                && it.second.ib->getSize() >= isize)
+	        {
+                it.second.used = true;
+                vUsed += it.second.vb->getSize();
+                iUsed += it.second.ib->getSize();
+                return it.second;
+	        }
+        }
+        TriangleBuffer b;
+        auto device = backend::Device::getInstance();
+        auto d = dynamic_cast<backend::DeviceGFX*>(device);
+        assert(d);
+        b.vb = d->newBuffer(vsize, vstride,
+            backend::BufferType::VERTEX, backend::BufferUsage::DYNAMIC);
+        b.ib = d->newBuffer(isize, istride,
+            backend::BufferType::INDEX, backend::BufferUsage::DYNAMIC);
+        assert(b.vb);
+        assert(b.ib);
+        b.used = true;
+        buffers.insert(std::pair(vnum + inum, b));
+        vTotal += vsize;
+        iTotal += isize;
+        vUsed += vsize;
+        iUsed += isize;
+        return b;
+    }
+    void reuse()
+    {
+        if (vTotal > 4096
+            && iTotal > 4096
+            && vUsed < vTotal * 0.5
+            && iUsed < iTotal * 0.5)
+	    {
+		    // remove unused
+            for (auto it = buffers.begin(); it != buffers.end();)
+            {
+                if (!it->second.used)
+                {
+                    CC_SAFE_RELEASE(it->second.vb);
+                    CC_SAFE_RELEASE(it->second.ib);
+                    it = buffers.erase(it);
+                }
+                else
+                    ++it;
+            }
+	    }
+        for (auto& it : buffers)
+	        it.second.used = false;
+    }
+    void reset()
+    {
+        for (auto& it : buffers)
+        {
+            CC_SAFE_RELEASE(it.second.vb);
+            CC_SAFE_RELEASE(it.second.ib);
+        }
+        buffers.clear();
+    }
+private:
+    std::multimap<uint32_t, TriangleBuffer> buffers;
+    size_t vTotal = 0;
+    size_t iTotal = 0;
+    size_t vUsed = 0;
+    size_t iUsed = 0;
+};
+static TriangleBufferPool GlobalTriangleBufferPool;
 
 // helper
 static bool compareRenderCommand(RenderCommand* a, RenderCommand* b)
@@ -167,7 +258,11 @@ Renderer::Renderer()
     _queuedTriangleCommands.reserve(BATCH_TRIAGCOMMAND_RESERVED_SIZE);
 
     // for the batched TriangleCommand
+#ifdef CC_USE_GFX
+    _triBatchesToDraw = new TriBatchToDraw[_triBatchesToDrawCapacity];
+#else
     _triBatchesToDraw = (TriBatchToDraw*) malloc(sizeof(_triBatchesToDraw[0]) * _triBatchesToDrawCapacity);
+#endif
 }
 
 Renderer::~Renderer()
@@ -175,7 +270,11 @@ Renderer::~Renderer()
     _renderGroups.clear();
     _groupCommandManager->release();
     
+#ifdef CC_USE_GFX
+    delete[] _triBatchesToDraw;
+#else
     free(_triBatchesToDraw);
+#endif
     
     CC_SAFE_RELEASE(_commandBuffer);
     CC_SAFE_RELEASE(_renderPipeline);
@@ -263,7 +362,7 @@ void Renderer::processRenderCommand(RenderCommand* command)
                 drawBatchedTriangles();
 
                 _queuedTotalIndexCount = _queuedTotalVertexCount = 0;
-#ifdef CC_USE_METAL
+#if !defined(CC_USE_GFX) && defined(CC_USE_METAL)
                 _queuedIndexCount = _queuedVertexCount = 0;
                 _triangleCommandBufferManager.prepareNextBuffer();
                 _vertexBuffer = _triangleCommandBufferManager.getVertexBuffer();
@@ -273,7 +372,7 @@ void Renderer::processRenderCommand(RenderCommand* command)
             
             // queue it
             _queuedTriangleCommands.push_back(cmd);
-#ifdef CC_USE_METAL
+#if !defined(CC_USE_GFX) && defined(CC_USE_METAL)
             _queuedIndexCount += cmd->getIndexCount();
             _queuedVertexCount += cmd->getVertexCount();
 #endif
@@ -376,6 +475,10 @@ void Renderer::render()
 
 void Renderer::beginFrame()
 {
+#ifdef CC_USE_GFX
+	_filledVertex = 0;
+    _filledIndex = 0;
+#endif
     _commandBuffer->beginFrame();
 }
 
@@ -383,13 +486,15 @@ void Renderer::endFrame()
 {
     _commandBuffer->endFrame();
 
-#ifdef CC_USE_METAL
+#if !defined(CC_USE_GFX) && defined(CC_USE_METAL)
     _triangleCommandBufferManager.putbackAllBuffers();
     _vertexBuffer = _triangleCommandBufferManager.getVertexBuffer();
     _indexBuffer = _triangleCommandBufferManager.getIndexBuffer();
 #endif
     _queuedTotalIndexCount = 0;
     _queuedTotalVertexCount = 0;
+
+    GlobalTriangleBufferPool.reuse();
 }
 
 void Renderer::clean()
@@ -527,6 +632,7 @@ void Renderer::setViewPort(int x, int y, unsigned int w, unsigned int h)
 
 void Renderer::fillVerticesAndIndices(const TrianglesCommand* cmd, unsigned int vertexBufferOffset)
 {
+#ifndef CC_USE_GFX
     size_t vertexCount = cmd->getVertexCount();
     memcpy(&_verts[_filledVertex], cmd->getVertices(), sizeof(V3F_C4B_T2F) * vertexCount);
     
@@ -547,13 +653,131 @@ void Renderer::fillVerticesAndIndices(const TrianglesCommand* cmd, unsigned int 
     
     _filledVertex += vertexCount;
     _filledIndex += indexCount;
+#endif
 }
 
+#ifdef CC_USE_GFX
 void Renderer::drawBatchedTriangles()
 {
     if(_queuedTriangleCommands.empty())
         return;
     
+    /************** 1: Setup up vertices/indices *************/
+
+    _triBatchesToDraw[0].indicesToDraw = 0;
+    _triBatchesToDraw[0].cmd = nullptr;
+    
+    int batchesTotal = 0;
+    int prevMaterialID = -1;
+    bool firstCommand = true;
+
+    for(const auto& cmd : _queuedTriangleCommands)
+    {
+        auto currentMaterialID = cmd->getMaterialID();
+        const bool batchable = !cmd->isSkipBatching();
+        
+        // in the same batch ?
+        if (batchable && (prevMaterialID == currentMaterialID || firstCommand))
+        {
+            CC_ASSERT((firstCommand || _triBatchesToDraw[batchesTotal].cmd->getMaterialID() == cmd->getMaterialID()) && "argh... error in logic");
+            if (_triBatchesToDraw[batchesTotal].indicesToDraw == 0)
+                _triBatchesToDraw[batchesTotal].cmds = { cmd };
+            else
+	            _triBatchesToDraw[batchesTotal].cmds.push_back(cmd);
+            _triBatchesToDraw[batchesTotal].indicesToDraw += cmd->getIndexCount();
+            _triBatchesToDraw[batchesTotal].cmd = cmd;
+        }
+        else
+        {
+            // is this the first one?
+            if (!firstCommand)
+            {
+                batchesTotal++;
+            }
+            
+            _triBatchesToDraw[batchesTotal].cmd = cmd;
+            _triBatchesToDraw[batchesTotal].cmds = { cmd };
+            _triBatchesToDraw[batchesTotal].indicesToDraw = (int) cmd->getIndexCount();
+            
+            // is this a single batch ? Prevent creating a batch group then
+            if (!batchable)
+                currentMaterialID = -1;
+        }
+        
+        // capacity full ?
+        if (batchesTotal + 1 >= _triBatchesToDrawCapacity)
+        {
+            int newSize = _triBatchesToDrawCapacity * 1.4;
+            auto triBatchesToDraw = new TriBatchToDraw[newSize];
+            for (int i = 0; i < _triBatchesToDrawCapacity; ++i)
+	            triBatchesToDraw[i] = _triBatchesToDraw[i];
+            delete[] _triBatchesToDraw;
+            _triBatchesToDraw = triBatchesToDraw;
+            _triBatchesToDrawCapacity = newSize;
+        }
+        
+        prevMaterialID = currentMaterialID;
+        firstCommand = false;
+    }
+    batchesTotal++;
+
+    /************** 2: Draw *************/
+    for (int i = 0; i < batchesTotal; ++i)
+    {
+        const auto& tb = _triBatchesToDraw[i];
+        size_t vnum = 0;
+        size_t inum = 0;
+        //TODO: remove usage of '_verts' and '_indices'
+        for (auto& c : tb.cmds)
+        {
+	        const auto vcount = c->getVertexCount();
+	        const auto icount = c->getIndexCount();
+            memcpy(&_verts[_filledVertex + vnum],
+                c->getVertices(),
+                sizeof(V3F_C4B_T2F) * vcount);
+            const Mat4& modelView = c->getModelView();
+            for (size_t j = 0; j < vcount; ++j)
+                modelView.transformPoint(&(_verts[j + _filledVertex + vnum].vertices));
+            const auto indices = c->getIndices();
+            for (size_t j = 0; j < icount; ++j)
+	            _indices[_filledIndex + inum + j] = vnum + indices[j];
+	        vnum += vcount;
+            inum += icount;
+        }
+        auto b = GlobalTriangleBufferPool.getBuffer(vnum, inum);
+        b.vb->updateData(&_verts[_filledVertex], sizeof(V3F_C4B_T2F) * vnum);
+        b.ib->updateData(&_indices[_filledIndex], sizeof(_indices[0]) * inum);
+        _filledVertex += vnum;
+        _filledIndex += inum;
+        assert(inum == tb.indicesToDraw);
+
+        beginRenderPass(tb.cmd);
+        _commandBuffer->setVertexBuffer(b.vb);
+        _commandBuffer->setIndexBuffer(b.ib);
+        auto& pipelineDescriptor = tb.cmd->getPipelineDescriptor();
+        _commandBuffer->setProgramState(pipelineDescriptor.programState);
+        _commandBuffer->drawElements(
+            backend::PrimitiveType::TRIANGLE,
+            backend::IndexFormat::U_SHORT,
+            tb.indicesToDraw,
+            0);
+        _commandBuffer->endRenderPass();
+
+        _drawnBatches++;
+        _drawnVertices += tb.indicesToDraw;
+    }
+
+    /************** 3: Cleanup *************/
+    _queuedTriangleCommands.clear();
+}
+
+#else
+
+void Renderer::drawBatchedTriangles()
+{
+    if (_queuedTriangleCommands.empty())
+        return;
+
     /************** 1: Setup up vertices/indices *************/
 #ifdef CC_USE_METAL
     unsigned int vertexBufferFillOffset = _queuedTotalVertexCount - _queuedVertexCount;
@@ -651,6 +875,7 @@ void Renderer::drawBatchedTriangles()
     _queuedVertexCount = 0;
 #endif
 }
+#endif
 
 void Renderer::drawCustomCommand(RenderCommand *command)
 {
@@ -758,7 +983,7 @@ void Renderer::setRenderPipeline(const PipelineDescriptor& pipelineDescriptor, c
         depthStencilState = device->createDepthStencilState(_depthStencilDescriptor);
     }
     _commandBuffer->setDepthStencilState(depthStencilState);
-#ifdef CC_USE_METAL
+#if defined(CC_USE_GFX) || defined(CC_USE_METAL)
     _commandBuffer->setRenderPipeline(_renderPipeline);
 #endif
 }
@@ -976,15 +1201,31 @@ backend::Buffer* Renderer::TriangleCommandBufferManager::getIndexBuffer() const
 
 void Renderer::TriangleCommandBufferManager::createBuffer()
 {
-    auto device = backend::Device::getInstance();
-
-#ifdef CC_USE_METAL
+    backend::Buffer* vertexBuffer = nullptr;
+    backend::Buffer* indexBuffer = nullptr;
+    const auto device = backend::Device::getInstance();
+#if defined(CC_USE_GFX)
+    const auto d = static_cast<backend::DeviceGFX*>(device);
+    constexpr auto vstride = sizeof(_verts[0]);
+    constexpr auto istride = sizeof(_indices[0]);
+    vertexBuffer = d->newBuffer(VBO_SIZE * vstride, vstride,
+        backend::BufferType::VERTEX, backend::BufferUsage::DYNAMIC);
+    if (!vertexBuffer)
+        return;
+    indexBuffer = d->newBuffer(INDEX_VBO_SIZE * istride, istride,
+        backend::BufferType::INDEX, backend::BufferUsage::DYNAMIC);
+    if (!indexBuffer)
+    {
+        vertexBuffer->release();
+        return;
+    }
+#elif defined(CC_USE_METAL)
     // Metal doesn't need to update buffer to make sure it has the correct size.
-    auto vertexBuffer = device->newBuffer(Renderer::VBO_SIZE * sizeof(_verts[0]), backend::BufferType::VERTEX, backend::BufferUsage::DYNAMIC);
+    vertexBuffer = device->newBuffer(Renderer::VBO_SIZE * sizeof(_verts[0]), backend::BufferType::VERTEX, backend::BufferUsage::DYNAMIC);
     if (!vertexBuffer)
         return;
 
-    auto indexBuffer = device->newBuffer(Renderer::INDEX_VBO_SIZE * sizeof(_indices[0]), backend::BufferType::INDEX, backend::BufferUsage::DYNAMIC);
+    indexBuffer = device->newBuffer(Renderer::INDEX_VBO_SIZE * sizeof(_indices[0]), backend::BufferType::INDEX, backend::BufferUsage::DYNAMIC);
     if (!indexBuffer)
     {
         vertexBuffer->release();
@@ -995,7 +1236,7 @@ void Renderer::TriangleCommandBufferManager::createBuffer()
     if (!tmpData)
         return;
 
-    auto vertexBuffer = device->newBuffer(Renderer::VBO_SIZE * sizeof(V3F_C4B_T2F), backend::BufferType::VERTEX, backend::BufferUsage::DYNAMIC);
+    vertexBuffer = device->newBuffer(Renderer::VBO_SIZE * sizeof(V3F_C4B_T2F), backend::BufferType::VERTEX, backend::BufferUsage::DYNAMIC);
     if (!vertexBuffer)
     {
         free(tmpData);
@@ -1003,8 +1244,8 @@ void Renderer::TriangleCommandBufferManager::createBuffer()
     }
     vertexBuffer->updateData(tmpData, Renderer::VBO_SIZE * sizeof(V3F_C4B_T2F));
 
-    auto indexBuffer = device->newBuffer(Renderer::INDEX_VBO_SIZE * sizeof(unsigned short), backend::BufferType::INDEX, backend::BufferUsage::DYNAMIC);
-    if (! indexBuffer)
+    indexBuffer = device->newBuffer(Renderer::INDEX_VBO_SIZE * sizeof(unsigned short), backend::BufferType::INDEX, backend::BufferUsage::DYNAMIC);
+    if (!indexBuffer)
     {
         free(tmpData);
         vertexBuffer->release();

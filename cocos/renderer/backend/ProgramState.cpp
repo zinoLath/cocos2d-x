@@ -30,6 +30,9 @@
 #include "base/CCEventDispatcher.h"
 #include "base/CCEventType.h"
 #include "base/CCDirector.h"
+#ifdef CC_USE_GFX
+#include "renderer/backend/gfx/ProgramGFX.h"
+#endif
 
 #include <algorithm>
 
@@ -157,6 +160,7 @@ TextureInfo& TextureInfo::operator=(const TextureInfo& rhs)
 
 ProgramState::ProgramState(Program* program)
 {
+    CC_ASSERT(program);
     init(program);
 }
 
@@ -167,7 +171,14 @@ bool ProgramState::init(Program* program)
     _vertexUniformBufferSize = _program->getUniformBufferSize(ShaderStage::VERTEX);
     _vertexUniformBuffer = new char[_vertexUniformBufferSize];
     memset(_vertexUniformBuffer, 0, _vertexUniformBufferSize);
-#ifdef CC_USE_METAL
+
+#if defined(CC_USE_GFX)
+    auto p = static_cast<ProgramGFX*>(_program);
+    CC_ASSERT(p->isValid());
+    auto stateGFX = new ProgramStateGFX(p);
+    stateGFX->autorelease();
+    p->_states.insert(this, stateGFX);
+#elif defined(CC_USE_METAL)
     _fragmentUniformBufferSize = _program->getUniformBufferSize(ShaderStage::FRAGMENT);
     _fragmentUniformBuffer = new char[_fragmentUniformBufferSize];
     memset(_fragmentUniformBuffer, 0, _fragmentUniformBufferSize);
@@ -209,6 +220,9 @@ ProgramState::ProgramState()
 
 ProgramState::~ProgramState()
 {
+#ifdef CC_USE_GFX
+	static_cast<ProgramGFX*>(_program)->_states.erase(this);
+#endif
     CC_SAFE_RELEASE(_program);
     CC_SAFE_DELETE_ARRAY(_vertexUniformBuffer);
     CC_SAFE_DELETE_ARRAY(_fragmentUniformBuffer);
@@ -229,7 +243,15 @@ ProgramState *ProgramState::clone() const
     cp->_vertexUniformBuffer = new char[_vertexUniformBufferSize];
     memcpy(cp->_vertexUniformBuffer, _vertexUniformBuffer, _vertexUniformBufferSize);
     cp->_vertexLayout = _vertexLayout;
-#ifdef CC_USE_METAL
+#if defined(CC_USE_GFX)
+    auto p = static_cast<ProgramGFX*>(_program);
+    auto stateGFX = new ProgramStateGFX(p);
+    CC_ASSERT(cp && p && stateGFX);
+    stateGFX->autorelease();
+    p->_states.insert(cp, stateGFX);
+    stateGFX->setAllBuffer(_vertexUniformBuffer, _vertexUniformBufferSize);
+    stateGFX->textures = p->_states.at((void*)this)->textures;
+#elif defined(CC_USE_METAL)
     cp->_fragmentUniformBuffer = new char[_fragmentUniformBufferSize];
     memcpy(cp->_fragmentUniformBuffer, _fragmentUniformBuffer, _fragmentUniformBufferSize);
 #endif
@@ -255,6 +277,40 @@ void ProgramState::setCallbackUniform(const backend::UniformLocation& uniformLoc
 
 void ProgramState::setUniform(const backend::UniformLocation& uniformLocation, const void* data, std::size_t size)
 {
+#ifdef CC_USE_GFX
+	const auto p = static_cast<ProgramGFX*>(_program);
+    CC_ASSERT(p->isValid());
+    const auto location = uniformLocation.location[0];
+    const auto offset = uniformLocation.location[1];
+	const auto state = p->_states.at(this);
+    CC_ASSERT(state);
+    if (!state)
+        return;
+	if (!state->setUniform(uniformLocation, data, size))
+	{
+		log("%s: failed, loc=%d, size=%d, offset=%d",
+		    __FUNCTION__, location, (int)size, offset);
+		CCASSERT(false, "failed");
+	}
+	const auto allOffset = state->getAllBufferOffset(uniformLocation);
+	if (allOffset + size > _vertexUniformBufferSize ||
+		allOffset > _vertexUniformBufferSize ||
+		size > _vertexUniformBufferSize)
+	{
+		log("%s: invalid parameters, loc=%d, size=%d, offset=%d",
+		    __FUNCTION__, location, (int)size, (int)allOffset);
+		CCASSERT(false, "invalid parameters");
+		return;
+	}
+	if (allOffset < 0)
+	{
+		log("%s: invalid uniform location, [0]=%d, [1]=%d",
+		    __FUNCTION__, location, (int)offset);
+		CCASSERT(false, "invalid uniform location");
+		return;
+	}
+	memcpy(_vertexUniformBuffer + allOffset, data, size);
+#else
     switch (uniformLocation.shaderStage)
     {
         case backend::ShaderStage::VERTEX:
@@ -270,9 +326,10 @@ void ProgramState::setUniform(const backend::UniformLocation& uniformLocation, c
         default:
             break;
     }
+#endif
 }
 
-#ifdef CC_USE_METAL
+#if !defined(CC_USE_GFX) && defined(CC_USE_METAL)
 void ProgramState::convertAndCopyUniformData(const backend::UniformInfo& uniformInfo, const void* srcData, std::size_t srcSize, void* buffer)
 {
     auto basicType = static_cast<glslopt_basic_type>(uniformInfo.type);
@@ -347,7 +404,7 @@ void ProgramState::setVertexUniform(int location, const void* data, std::size_t 
         return;
     
 //float3 etc in Metal has both sizeof and alignment same as float4, need convert to correct laytout
-#ifdef CC_USE_METAL
+#if !defined(CC_USE_GFX) && defined(CC_USE_METAL)
     const auto& uniformInfo = _program->getActiveUniformInfo(ShaderStage::VERTEX, location);
     if(uniformInfo.needConvert)
     {
@@ -358,6 +415,13 @@ void ProgramState::setVertexUniform(int location, const void* data, std::size_t 
         memcpy(_vertexUniformBuffer + location, data, size);
     }
 #else
+    if (offset + size > _vertexUniformBufferSize ||
+        offset > _vertexUniformBufferSize ||
+        size > _vertexUniformBufferSize)
+    {
+        log("setVertexUniform: %d, %d, %d", location, (int)size, (int)offset);
+        CCASSERT(false, "setVertexUniform: invalid parameters");
+    }
     memcpy(_vertexUniformBuffer + offset, data, size);
 #endif
 }
@@ -368,7 +432,7 @@ void ProgramState::setFragmentUniform(int location, const void* data, std::size_
         return;
    
 //float3 etc in Metal has both sizeof and alignment same as float4, need convert to correct laytout
-#ifdef CC_USE_METAL
+#if !defined(CC_USE_GFX) && defined(CC_USE_METAL)
     const auto& uniformInfo = _program->getActiveUniformInfo(ShaderStage::FRAGMENT, location);
     if(uniformInfo.needConvert)
     {
@@ -383,6 +447,17 @@ void ProgramState::setFragmentUniform(int location, const void* data, std::size_
 
 void ProgramState::setTexture(const backend::UniformLocation& uniformLocation, uint32_t slot, backend::TextureBackend* texture)
 {
+#ifdef CC_USE_GFX
+	const auto p = static_cast<ProgramGFX*>(_program);
+    CC_ASSERT(p->isValid());
+	const auto state = p->_states.at(this);
+    CC_ASSERT(state);
+    if (state)
+	{
+		state->setTexture(uniformLocation, texture, slot);
+	}
+	// not use _vertexTextureInfos
+#else
     switch (uniformLocation.shaderStage)
     {
         case backend::ShaderStage::VERTEX:
@@ -398,10 +473,17 @@ void ProgramState::setTexture(const backend::UniformLocation& uniformLocation, u
         default:
             break;
     }
+#endif
 }
 
 void ProgramState::setTextureArray(const backend::UniformLocation& uniformLocation, const std::vector<uint32_t>& slots, const std::vector<backend::TextureBackend*> textures)
 {
+#ifdef CC_USE_GFX
+	for (int i = 0; i < std::min(slots.size(), textures.size()); ++i)
+	{
+		setTexture(uniformLocation, slots.at(i), textures.at(i));
+	}
+#else
     switch (uniformLocation.shaderStage)
     {
         case backend::ShaderStage::VERTEX:
@@ -417,6 +499,7 @@ void ProgramState::setTextureArray(const backend::UniformLocation& uniformLocati
         default:
             break;
     }
+#endif
 }
 
 void ProgramState::setTexture(int location, uint32_t slot, backend::TextureBackend* texture, std::unordered_map<int, TextureInfo>& textureInfo)

@@ -163,7 +163,6 @@ void ProgramCache::addProgram(ProgramType type)
             program = backend::Device::getInstance()->newProgram(positionColor_vert, positionColor_frag);
             break;
         case ProgramType::POSITION:
-            //program = backend::Device::getInstance()->newProgram(position_vert, positionColor_frag);
             program = backend::Device::getInstance()->newProgram(position_vert, "void main(){}");
             break;
         case ProgramType::LAYER_RADIA_GRADIENT:
@@ -247,8 +246,11 @@ void ProgramCache::addProgram(ProgramType type)
             CCASSERT(false, "Not built-in program type.");
             break;
     }
-    program->setProgramType(type);
-    ProgramCache::_cachedPrograms.emplace(type, program);
+    if (program)
+    {
+	    program->setProgramType(type);
+	    ProgramCache::_cachedPrograms.emplace(type, program);
+    }
 }
 
 backend::Program* ProgramCache::getBuiltinProgram(ProgramType type) const

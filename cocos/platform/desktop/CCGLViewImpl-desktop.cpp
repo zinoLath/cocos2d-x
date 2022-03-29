@@ -43,7 +43,26 @@ THE SOFTWARE.
 #include "platform/CCImage.h"
 #endif /* CC_ICON_SET_SUPPORT */
 
+#if (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32)
+#define GLFW_EXPOSE_NATIVE_WIN32
+#define GLFW_EXPOSE_NATIVE_WGL
+#elif (CC_TARGET_PLATFORM == CC_PLATFORM_MAC)
+#define GLFW_EXPOSE_NATIVE_COCOA
+#define GLFW_EXPOSE_NATIVE_NSGL
+#else
+#define GLFW_EXPOSE_NATIVE_EGL
+#define GLFW_EXPOSE_NATIVE_X11
+#endif
+
+#include "glfw3native.h"
+
 #include "renderer/CCRenderer.h"
+#include "glad/glad_egl.h"
+#ifdef CC_USE_GFX
+#include "gfx-base/GFXDef-common.h"
+#include "GFXDeviceManager.h"
+#include "renderer/backend/gfx/DeviceGFX.h"
+#endif
 
 NS_CC_BEGIN
 
@@ -286,8 +305,33 @@ bool GLViewImpl::initWithRect(const std::string& viewName, Rect rect, float fram
     setViewName(viewName);
 
     _frameZoomFactor = frameZoomFactor;
-
-#ifdef CC_USE_ANGLE
+#if defined(CC_USE_GFX)
+    auto desiredApi = cc::gfx::API::VULKAN;
+#if (CC_TARGET_PLATFORM == CC_PLATFORM_MAC)
+    DesiredAPI = cc::gfx::API::METAL;
+#endif
+    auto configAPI = Configuration::getInstance()->getValue("GFXDesiredAPI").asInt();
+    if (0 < configAPI && configAPI <= (int)cc::gfx::API::WEBGPU)
+	    desiredApi = (cc::gfx::API)configAPI;
+    if (desiredApi == cc::gfx::API::VULKAN || desiredApi == cc::gfx::API::METAL)
+    {
+	    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    }
+    else
+    {
+	    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
+	    glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_EGL_CONTEXT_API);
+	    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+    }
+#elif defined(CC_USE_ANGLE)
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
+    glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_EGL_CONTEXT_API);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+#elif defined(CC_USE_METAL)
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+#else
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
     glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_EGL_CONTEXT_API);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
@@ -303,11 +347,6 @@ bool GLViewImpl::initWithRect(const std::string& viewName, Rect rect, float fram
     glfwWindowHint(GLFW_STENCIL_BITS,_glContextAttrs.stencilBits);
     
     glfwWindowHint(GLFW_SAMPLES, _glContextAttrs.multisamplingCount);
-    
-#if (CC_TARGET_PLATFORM == CC_PLATFORM_MAC)
-    // Don't create gl context.
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-#endif
 
     int neededWidth = (int)(rect.size.width * _frameZoomFactor);
     int neededHeight = (int)(rect.size.height * _frameZoomFactor);
@@ -363,14 +402,52 @@ bool GLViewImpl::initWithRect(const std::string& viewName, Rect rect, float fram
 
     setFrameSize(rect.size.width, rect.size.height);
 
-#if (CC_TARGET_PLATFORM != CC_PLATFORM_MAC)
+#if defined(CC_USE_GFX)
+
+	void* hdl = nullptr;
+#if (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32)
+    hdl = glfwGetWin32Window(_mainWindow);
+#elif (CC_TARGET_PLATFORM == CC_PLATFORM_MAC)
+    hdl = (void*)glfwGetCocoaWindow(_mainWindow);
+#else
+    hdl = (void*)glfwGetX11Window(_mainWindow);
+#endif
+    CC_ASSERT(hdl);
+
+    cc::gfx::DeviceInfo info;
+    const auto device = cc::gfx::DeviceManager::create(info, desiredApi);
+    if (!device)
+    {
+        ccMessageBox("Failed to create device", "Error");
+        return false;
+    }
+    const auto api = device->getGfxAPI();
+    if (api != cc::gfx::API::VULKAN && api != cc::gfx::API::METAL)
+    {
+        if (!gladLoaderLoadEGL(EGL_DEFAULT_DISPLAY) || !gladLoaderLoadGLES2())
+        {
+            ccMessageBox("Failed to Load glad", "OpenGL error");
+            return false;
+        }
+    }
+
+    backend::DeviceGFX::setSwapchainInfo(hdl, true, rect.size.width, rect.size.height);
+
+    auto configMT = Configuration::getInstance()->getValue("GFXMultithreaded");
+    const auto agent = dynamic_cast<cc::gfx::DeviceAgent*>(device);
+    if (agent && configMT.getType() == Value::Type::BOOLEAN)
+    {
+        agent->setMultithreaded(configMT.asBool());
+    }
+
+#elif (CC_TARGET_PLATFORM != CC_PLATFORM_MAC)
 
     initGlew();
 
     // check OpenGL version at first
-    const char* glVersion = (const char*)glGetString(GL_VERSION);
+    const char* glVersion = glGetString ? (const char*)glGetString(GL_VERSION) : nullptr;
 
-    if (!glVersion || (utils::atof(glVersion) < 1.5 && nullptr == strstr(glVersion, "ANGLE")))
+    if (!glVersion || (strlen(glVersion) <= 3 && utils::atof(glVersion) < 1.5 && nullptr == strstr(glVersion, "ANGLE")))
     {
         char strComplain[256] = {0};
         sprintf(strComplain,
@@ -441,8 +518,10 @@ void GLViewImpl::end()
 
 void GLViewImpl::swapBuffers()
 {
+#ifndef CC_USE_GFX
     if(_mainWindow)
         glfwSwapBuffers(_mainWindow);
+#endif
 }
 
 bool GLViewImpl::windowShouldClose()
@@ -705,6 +784,22 @@ Rect GLViewImpl::getScissorRect() const
     float h = rect.height / (_scaleY * _retinaFactor  * _frameZoomFactor);
     return Rect(x, y, w, h);
 }
+
+#if (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32)
+HWND GLViewImpl::getWin32Window()
+{
+    return glfwGetWin32Window(_mainWindow);
+}
+#elif (CC_TARGET_PLATFORM == CC_PLATFORM_MAC)
+id GLViewImpl::getCocoaWindow()
+{
+    return glfwGetCocoaWindow(_mainWindow);
+}
+id GLViewImpl::getNSGLContext()
+{
+    return glfwGetNSGLContext(_mainWindow);
+}
+#endif
 
 void GLViewImpl::onGLFWError(int errorID, const char* errorDesc)
 {
@@ -974,9 +1069,9 @@ static bool glew_dynamic_binding()
             glDeleteFramebuffers = (PFNGLDELETEFRAMEBUFFERSPROC) wglGetProcAddress("glDeleteFramebuffers");
             glGenFramebuffers = (PFNGLGENFRAMEBUFFERSPROC) wglGetProcAddress("glGenFramebuffers");
             glCheckFramebufferStatus = (PFNGLCHECKFRAMEBUFFERSTATUSPROC) wglGetProcAddress("glCheckFramebufferStatus");
-            glFramebufferTexture1D = (PFNGLFRAMEBUFFERTEXTURE1DPROC) wglGetProcAddress("glFramebufferTexture1D");
+            //glFramebufferTexture1D = (PFNGLFRAMEBUFFERTEXTURE1DPROC) wglGetProcAddress("glFramebufferTexture1D");
             glFramebufferTexture2D = (PFNGLFRAMEBUFFERTEXTURE2DPROC) wglGetProcAddress("glFramebufferTexture2D");
-            glFramebufferTexture3D = (PFNGLFRAMEBUFFERTEXTURE3DPROC) wglGetProcAddress("glFramebufferTexture3D");
+            //glFramebufferTexture3D = (PFNGLFRAMEBUFFERTEXTURE3DPROC) wglGetProcAddress("glFramebufferTexture3D");
             glFramebufferRenderbuffer = (PFNGLFRAMEBUFFERRENDERBUFFERPROC) wglGetProcAddress("glFramebufferRenderbuffer");
             glGetFramebufferAttachmentParameteriv = (PFNGLGETFRAMEBUFFERATTACHMENTPARAMETERIVPROC) wglGetProcAddress("glGetFramebufferAttachmentParameteriv");
             glGenerateMipmap = (PFNGLGENERATEMIPMAPPROC) wglGetProcAddress("glGenerateMipmap");
@@ -996,9 +1091,9 @@ static bool glew_dynamic_binding()
             glDeleteFramebuffers = (PFNGLDELETEFRAMEBUFFERSPROC) wglGetProcAddress("glDeleteFramebuffersEXT");
             glGenFramebuffers = (PFNGLGENFRAMEBUFFERSPROC) wglGetProcAddress("glGenFramebuffersEXT");
             glCheckFramebufferStatus = (PFNGLCHECKFRAMEBUFFERSTATUSPROC) wglGetProcAddress("glCheckFramebufferStatusEXT");
-            glFramebufferTexture1D = (PFNGLFRAMEBUFFERTEXTURE1DPROC) wglGetProcAddress("glFramebufferTexture1DEXT");
+            //glFramebufferTexture1D = (PFNGLFRAMEBUFFERTEXTURE1DPROC) wglGetProcAddress("glFramebufferTexture1DEXT");
             glFramebufferTexture2D = (PFNGLFRAMEBUFFERTEXTURE2DPROC) wglGetProcAddress("glFramebufferTexture2DEXT");
-            glFramebufferTexture3D = (PFNGLFRAMEBUFFERTEXTURE3DPROC) wglGetProcAddress("glFramebufferTexture3DEXT");
+            //glFramebufferTexture3D = (PFNGLFRAMEBUFFERTEXTURE3DPROC) wglGetProcAddress("glFramebufferTexture3DEXT");
             glFramebufferRenderbuffer = (PFNGLFRAMEBUFFERRENDERBUFFERPROC) wglGetProcAddress("glFramebufferRenderbufferEXT");
             glGetFramebufferAttachmentParameteriv = (PFNGLGETFRAMEBUFFERATTACHMENTPARAMETERIVPROC) wglGetProcAddress("glGetFramebufferAttachmentParameterivEXT");
             glGenerateMipmap = (PFNGLGENERATEMIPMAPPROC) wglGetProcAddress("glGenerateMipmapEXT");
@@ -1020,32 +1115,19 @@ bool GLViewImpl::initGlew()
 #if (CC_TARGET_PLATFORM != CC_PLATFORM_MAC)
 
 #ifndef CC_USE_ANGLE
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+    if (!gladLoaderLoadEGL(EGL_DEFAULT_DISPLAY) || !gladLoaderLoadGLES2())
     {
-        ccMessageBox("glad: Failed to Load GL", "OpenGL error");
+        ccMessageBox("Failed to Load glad", "OpenGL error");
         return false;
     }
 
-    if (GL_ARB_vertex_shader && GL_ARB_fragment_shader)
+    if (GLAD_GL_ES_VERSION_2_0 && glGenFramebuffers)
     {
         log("Ready for GLSL");
     }
     else
     {
         log("Not totally ready :(");
-    }
-
-#if (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32)
-    if(glew_dynamic_binding() == false)
-    {
-        ccMessageBox("No OpenGL framebuffer support. Please upgrade the driver of your video card.", "OpenGL error");
-        return false;
-    }
-#endif //#if (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32)
-#else
-    if (!gladLoadGLES2Loader((GLADloadproc)glfwGetProcAddress))
-    {
-        ccMessageBox("glad: Failed to Load GLES2", "OpenGL error");
         return false;
     }
 #endif // !CC_USE_ANGLE

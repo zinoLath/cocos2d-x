@@ -406,6 +406,7 @@ public:
     /** returns whether or not a rectangle is visible or not */
     bool checkVisibility(const Mat4& transform, const Size& size);
 
+    backend::CommandBuffer* getCommandBuffer() const { return _commandBuffer; }
     std::unordered_map<std::string, Value> getDebugInfo();
 
 protected:
@@ -514,6 +515,9 @@ protected:
     struct TriBatchToDraw
     {
         TrianglesCommand* cmd = nullptr;  // needed for the Material
+#ifdef CC_USE_GFX
+        std::vector<TrianglesCommand*> cmds;
+#endif
         unsigned int indicesToDraw = 0;
         unsigned int offset = 0;
     };

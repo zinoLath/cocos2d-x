@@ -27,6 +27,11 @@
 #include "renderer/backend/Buffer.h"
 #include "renderer/backend/Device.h"
 #include "base/ccUtils.h"
+#ifdef CC_USE_GFX
+#include "renderer/backend/gfx/DeviceGFX.h"
+#include "renderer/backend/gfx/BufferGFX.h"
+#include "renderer/backend/gfx/UtilsGFX.h"
+#endif
 
 NS_CC_BEGIN
 
@@ -67,9 +72,17 @@ void CustomCommand::createVertexBuffer(std::size_t vertexSize, std::size_t capac
     
     _vertexCapacity = capacity;
     _vertexDrawCount = capacity;
-    
+#ifdef CC_USE_GFX
+    cc::gfx::BufferInfo info;
+    info.usage = cc::gfx::BufferUsageBit::VERTEX;
+    info.memUsage = backend::UtilsGFX::toMemoryUsage(usage);
+    info.size = vertexSize * capacity;
+    info.stride = vertexSize;
+    _vertexBuffer = new backend::BufferGFX(info);
+#else
     auto device = backend::Device::getInstance();
     _vertexBuffer = device->newBuffer(vertexSize * capacity, backend::BufferType::VERTEX, usage);
+#endif
 }
 
 void CustomCommand::createIndexBuffer(IndexFormat format, std::size_t capacity, BufferUsage usage)
@@ -80,9 +93,17 @@ void CustomCommand::createIndexBuffer(IndexFormat format, std::size_t capacity, 
     _indexSize = computeIndexSize();
     _indexCapacity = capacity;
     _indexDrawCount = capacity;
-    
+#ifdef CC_USE_GFX
+    cc::gfx::BufferInfo info;
+    info.usage = cc::gfx::BufferUsageBit::INDEX;
+    info.memUsage = backend::UtilsGFX::toMemoryUsage(usage);
+    info.size = _indexSize * capacity;
+    info.stride = _indexSize;
+    _indexBuffer = new backend::BufferGFX(info);
+#else
     auto device = backend::Device::getInstance();
     _indexBuffer = device->newBuffer(_indexSize * capacity, backend::BufferType::INDEX, usage);
+#endif
 }
 
 void CustomCommand::updateVertexBuffer(void* data, std::size_t offset, std::size_t length)

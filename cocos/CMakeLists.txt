@@ -159,3 +159,7 @@ endif()
 #    # TODO: Only turn this off if ${CMAKE_XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET} < 11.0
 #    target_compile_options(cocos2d PUBLIC $<$<COMPILE_LANGUAGE:CXX>:-fno-aligned-allocation>)
 #endif()
+
+if(CC_USE_GFX)
+	target_compile_definitions(cocos2d PUBLIC CC_USE_GFX)
+endif()

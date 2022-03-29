@@ -32,16 +32,6 @@ THE SOFTWARE.
 #include "platform/CCGLView.h"
 #include "glfw3.h"
 
-#if (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32)
-#ifndef GLFW_EXPOSE_NATIVE_WIN32
-#define GLFW_EXPOSE_NATIVE_WIN32
-#endif
-#ifndef GLFW_EXPOSE_NATIVE_WGL
-#define GLFW_EXPOSE_NATIVE_WGL
-#endif
-#include "glfw3native.h"
-#endif /* (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32) */
-
 NS_CC_BEGIN
 
 
@@ -111,7 +101,7 @@ public:
     int getRetinaFactor() const override { return _retinaFactor; }
     
 #if (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32)
-    HWND getWin32Window() { return glfwGetWin32Window(_mainWindow); }
+    HWND getWin32Window() override;
 #endif /* (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32) */
     
 #if (CC_TARGET_PLATFORM == CC_PLATFORM_MAC)
