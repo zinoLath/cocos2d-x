@@ -1,4 +1,5 @@
 #include "scripting/lua-bindings/auto/lua_cocos2dx_csloader_auto.hpp"
+#ifdef BUILD_EDITOR_COCOSTUDIO
 #include "editor-support/cocostudio/ActionTimeline/CSLoader.h"
 #include "scripting/lua-bindings/manual/tolua_fix.h"
 #include "scripting/lua-bindings/manual/LuaBasicConversions.h"
@@ -744,6 +745,7 @@ int lua_register_cocos2dx_csloader_CSLoader(lua_State* tolua_S)
     g_typeCast["CSLoader"] = "cc.CSLoader";
     return 1;
 }
+#endif
 TOLUA_API int register_all_cocos2dx_csloader(lua_State* tolua_S)
 {
 	tolua_open(tolua_S);
@@ -751,7 +753,9 @@ TOLUA_API int register_all_cocos2dx_csloader(lua_State* tolua_S)
 	tolua_module(tolua_S,"cc",0);
 	tolua_beginmodule(tolua_S,"cc");
 
-	lua_register_cocos2dx_csloader_CSLoader(tolua_S);
+#ifdef BUILD_EDITOR_COCOSTUDIO
+    lua_register_cocos2dx_csloader_CSLoader(tolua_S);
+#endif
 
 	tolua_endmodule(tolua_S);
 	return 1;

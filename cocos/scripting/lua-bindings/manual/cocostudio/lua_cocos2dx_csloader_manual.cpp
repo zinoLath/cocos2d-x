@@ -22,8 +22,9 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
  ****************************************************************************/
-#include "scripting/lua-bindings/manual/cocostudio/lua_cocos2dx_csloader_manual.hpp"
 #include "scripting/lua-bindings/manual/tolua_fix.h"
+#ifdef BUILD_EDITOR_COCOSTUDIO
+#include "scripting/lua-bindings/manual/cocostudio/lua_cocos2dx_csloader_manual.hpp"
 #include "scripting/lua-bindings/manual/LuaBasicConversions.h"
 #include "scripting/lua-bindings/manual/CCLuaValue.h"
 #include "scripting/lua-bindings/manual/CCLuaEngine.h"
@@ -130,6 +131,7 @@ tolua_lerror:
 #endif
     return 0;
 }
+#endif
 
 int register_all_cocos2dx_csloader_manual(lua_State* L)
 {
@@ -137,8 +139,10 @@ int register_all_cocos2dx_csloader_manual(lua_State* L)
     lua_rawget(L, LUA_REGISTRYINDEX);
     if (lua_istable(L,-1))
     {
+#ifdef BUILD_EDITOR_COCOSTUDIO
         tolua_function(L, "createTimeline", lua_cocos2dx_csloader_CSLoader_createTimeline);
         tolua_function(L, "createNode", lua_cocos2dx_csloader_CSLoader_createNode);
+#endif
     }
     lua_pop(L, 1);
     

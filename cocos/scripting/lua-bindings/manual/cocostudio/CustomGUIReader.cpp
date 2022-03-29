@@ -22,6 +22,7 @@
  THE SOFTWARE.
  ****************************************************************************/
 
+#ifdef BUILD_EDITOR_COCOSTUDIO
 #include "scripting/lua-bindings/manual/cocostudio/CustomGUIReader.h"
 #include "scripting/lua-bindings/manual/CCLuaEngine.h"
 #include "json/writer.h"
@@ -107,3 +108,4 @@ namespace cocostudio
         }
 	}
 }
+#endif

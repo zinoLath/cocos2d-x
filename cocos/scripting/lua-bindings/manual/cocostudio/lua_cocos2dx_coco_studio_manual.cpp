@@ -36,6 +36,7 @@
 #include "scripting/lua-bindings/manual/cocostudio/CustomGUIReader.h"
 
 using namespace cocostudio;
+#ifdef BUILD_EDITOR_COCOSTUDIO
 
 class LuaArmatureWrapper:public Ref
 {
@@ -595,17 +596,20 @@ int lua_register_cocos2dx_coco_studio_CustomGUIReader(lua_State* L)
     tolua_endmodule(L);
     return 1;
 }
+#endif
 
 int register_cocostudio_module(lua_State* L)
 {
     lua_getglobal(L, "_G");
     if (lua_istable(L,-1))//stack:...,_G,
     {
+#ifdef BUILD_EDITOR_COCOSTUDIO
         register_all_cocos2dx_studio(L);
         register_all_cocos2dx_csloader(L);
         register_all_cocos2dx_coco_studio_manual(L);
         register_all_cocos2dx_csloader_manual(L);
         lua_register_cocos2dx_coco_studio_CustomGUIReader(L);
+#endif
     }
     lua_pop(L, 1);
     return 1;

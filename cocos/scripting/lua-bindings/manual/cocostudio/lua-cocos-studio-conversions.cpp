@@ -23,6 +23,7 @@
  THE SOFTWARE.
  ****************************************************************************/
 
+#ifdef BUILD_EDITOR_COCOSTUDIO
 #include "scripting/lua-bindings/manual/cocostudio/lua-cocos-studio-conversions.h"
 #include "editor-support/cocostudio/ActionTimeline/CCActionTimeline.h"
 
@@ -88,3 +89,4 @@ void animationInfo_to_luaval(lua_State* L,const cocostudio::timeline::AnimationI
     lua_pushnumber(L, (lua_Number)inValue.endIndex);
     lua_rawset(L, -3);
 }
+#endif

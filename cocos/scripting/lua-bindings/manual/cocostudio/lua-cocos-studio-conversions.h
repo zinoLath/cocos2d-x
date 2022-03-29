@@ -32,6 +32,7 @@ extern "C" {
 
 #include "scripting/lua-bindings/manual/tolua_fix.h"
 
+#ifdef BUILD_EDITOR_COCOSTUDIO
 namespace cocostudio
 {
     namespace timeline
@@ -43,6 +44,6 @@ namespace cocostudio
 extern bool luaval_to_animationInfo(lua_State* L, int lo, cocostudio::timeline::AnimationInfo* outValue , const char* funcName = "");
 
 extern void animationInfo_to_luaval(lua_State* L,const cocostudio::timeline::AnimationInfo& inValue);
-
+#endif
 
 #endif //__COCOS_SCRIPTING_LUA_BINDING_MANUAL_COCOSTUDIO_LUA_STUDIO_CONVERSIONS_H__

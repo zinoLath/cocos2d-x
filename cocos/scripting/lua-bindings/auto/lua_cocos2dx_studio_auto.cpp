@@ -5,6 +5,8 @@
 #include "scripting/lua-bindings/manual/tolua_fix.h"
 #include "scripting/lua-bindings/manual/LuaBasicConversions.h"
 
+#ifdef BUILD_EDITOR_COCOSTUDIO
+
 int lua_cocos2dx_studio_ActionFrame_getAction(lua_State* tolua_S)
 {
     int argc = 0;
@@ -25100,13 +25102,14 @@ int lua_register_cocos2dx_studio_ComExtensionData(lua_State* tolua_S)
     g_typeCast["ComExtensionData"] = "ccs.ComExtensionData";
     return 1;
 }
+#endif
 TOLUA_API int register_all_cocos2dx_studio(lua_State* tolua_S)
 {
 	tolua_open(tolua_S);
 	
 	tolua_module(tolua_S,"ccs",0);
 	tolua_beginmodule(tolua_S,"ccs");
-
+#ifdef BUILD_EDITOR_COCOSTUDIO
 	lua_register_cocos2dx_studio_Frame(tolua_S);
 	lua_register_cocos2dx_studio_PlayableFrame(tolua_S);
 	lua_register_cocos2dx_studio_ActionTimelineNode(tolua_S);
@@ -25166,7 +25169,7 @@ TOLUA_API int register_all_cocos2dx_studio(lua_State* tolua_S)
 	lua_register_cocos2dx_studio_ActionScaleFrame(tolua_S);
 	lua_register_cocos2dx_studio_TextureFrame(tolua_S);
 	lua_register_cocos2dx_studio_ComAttribute(tolua_S);
-
+#endif
 	tolua_endmodule(tolua_S);
 	return 1;
 }
