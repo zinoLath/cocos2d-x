@@ -456,8 +456,7 @@ void ProgramState::setTexture(const backend::UniformLocation& uniformLocation, u
 	{
 		state->setTexture(uniformLocation, texture, slot);
 	}
-	// not use _vertexTextureInfos
-#else
+#endif
     switch (uniformLocation.shaderStage)
     {
         case backend::ShaderStage::VERTEX:
@@ -473,7 +472,6 @@ void ProgramState::setTexture(const backend::UniformLocation& uniformLocation, u
         default:
             break;
     }
-#endif
 }
 
 void ProgramState::setTextureArray(const backend::UniformLocation& uniformLocation, const std::vector<uint32_t>& slots, const std::vector<backend::TextureBackend*> textures)
@@ -483,7 +481,7 @@ void ProgramState::setTextureArray(const backend::UniformLocation& uniformLocati
 	{
 		setTexture(uniformLocation, slots.at(i), textures.at(i));
 	}
-#else
+#endif
     switch (uniformLocation.shaderStage)
     {
         case backend::ShaderStage::VERTEX:
@@ -499,7 +497,6 @@ void ProgramState::setTextureArray(const backend::UniformLocation& uniformLocati
         default:
             break;
     }
-#endif
 }
 
 void ProgramState::setTexture(int location, uint32_t slot, backend::TextureBackend* texture, std::unordered_map<int, TextureInfo>& textureInfo)
