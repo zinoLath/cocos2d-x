@@ -71,6 +71,24 @@ CommandBufferGFX::~CommandBufferGFX()
 
 void CommandBufferGFX::beginFrame()
 {
+	//NOTE: default FBO should be created after 'acquire'
+	//BUG: got error if window is resized on vulkan
+	if (_screenResized)
+	{
+		const auto view = (GLViewImpl*)Director::getInstance()->getOpenGLView();
+		void* hdl = view->getWindowHandle();
+
+		const auto fsize = Director::getInstance()->getOpenGLView()->getFrameSize();
+		for (auto& sw : swapchains)
+		{
+			sw->resize(fsize.width, fsize.height, gfx::SurfaceTransform::IDENTITY);
+		}
+		DeviceGFX::setSwapchainInfo(hdl, ((DeviceGFX*)DeviceGFX::getInstance())->getVsync(),
+			fsize.width, fsize.height);
+
+		CC_SAFE_DELETE(_defaultFBO);
+		_screenResized = false;
+	}
 	if (swapchains.empty())
 	{
 		const auto d = (DeviceGFX*)backend::Device::getInstance();
@@ -83,13 +101,7 @@ void CommandBufferGFX::beginFrame()
 		swapchains.push_back(sw);
 	}
 	gfx::Device::getInstance()->acquire(swapchains);
-	//NOTE: default FBO should be created after 'acquire'
-	//TODO: default FBO can be changed in 'acquire' if surface is resized
-	if (_screenResized)
-	{
-		CC_SAFE_DELETE(_defaultFBO);
-		_screenResized = false;
-	}
+
 	if(!_defaultFBO)
 		resetDefaultFBO();
 	_cb->begin();
