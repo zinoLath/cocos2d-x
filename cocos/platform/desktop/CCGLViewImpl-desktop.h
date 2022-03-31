@@ -102,12 +102,13 @@ public:
     
 #if (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32)
     HWND getWin32Window() override;
-#endif /* (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32) */
-    
-#if (CC_TARGET_PLATFORM == CC_PLATFORM_MAC)
+#elif (CC_TARGET_PLATFORM == CC_PLATFORM_MAC)
     id getCocoaWindow() override;
     id getNSGLContext() override; // stevetranby: added
-#endif // #if (CC_TARGET_PLATFORM == CC_PLATFORM_MAC)
+#else
+    void* getLinuxWindow();
+#endif
+    void* getWindowHandle();
 
 protected:
     GLViewImpl(bool initglfw = true);

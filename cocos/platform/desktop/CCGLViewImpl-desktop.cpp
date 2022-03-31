@@ -404,14 +404,7 @@ bool GLViewImpl::initWithRect(const std::string& viewName, Rect rect, float fram
 
 #if defined(CC_USE_GFX)
 
-	void* hdl = nullptr;
-#if (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32)
-    hdl = glfwGetWin32Window(_mainWindow);
-#elif (CC_TARGET_PLATFORM == CC_PLATFORM_MAC)
-    hdl = (void*)glfwGetCocoaWindow(_mainWindow);
-#else
-    hdl = (void*)glfwGetX11Window(_mainWindow);
-#endif
+	void* hdl = getWindowHandle();
     CC_ASSERT(hdl);
 
     cc::gfx::DeviceInfo info;
@@ -799,7 +792,23 @@ id GLViewImpl::getNSGLContext()
 {
     return glfwGetNSGLContext(_mainWindow);
 }
+#else
+void* GLViewImpl::getLinuxWindow()
+{
+    return glfwGetX11Window(_mainWindow);
+}
 #endif
+
+void* GLViewImpl::getWindowHandle()
+{
+#if (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32)
+    return glfwGetWin32Window(_mainWindow);
+#elif (CC_TARGET_PLATFORM == CC_PLATFORM_MAC)
+    return (void*)glfwGetCocoaWindow(_mainWindow);
+#else
+    return (void*)glfwGetX11Window(_mainWindow);
+#endif
+}
 
 void GLViewImpl::onGLFWError(int errorID, const char* errorDesc)
 {
