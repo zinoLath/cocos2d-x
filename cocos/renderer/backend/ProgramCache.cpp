@@ -251,6 +251,10 @@ void ProgramCache::addProgram(ProgramType type)
 	    program->setProgramType(type);
 	    ProgramCache::_cachedPrograms.emplace(type, program);
     }
+    else
+    {
+        log("failed to create internal program %d", (int)type);
+    }
 }
 
 backend::Program* ProgramCache::getBuiltinProgram(ProgramType type) const
