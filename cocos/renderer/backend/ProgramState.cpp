@@ -454,7 +454,13 @@ void ProgramState::setTexture(const backend::UniformLocation& uniformLocation, u
     CC_ASSERT(state);
     if (state)
 	{
-		state->setTexture(uniformLocation, texture, slot);
+        // slot is replaced by location[0]
+        const bool ok = state->setTexture(uniformLocation, texture, /*slot*/0);
+        if (!ok)
+        {
+            log("%s: failed, location=%d,%d, slot=%d, texture=0x%x", __FUNCTION__,
+                uniformLocation.location[0], uniformLocation.location[1], slot, texture);
+        }
 	}
 #endif
     switch (uniformLocation.shaderStage)

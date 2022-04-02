@@ -1130,13 +1130,17 @@ void ProgramStateGFX::bindUniformTextures(cc::gfx::DescriptorSet* ds, uint32_t s
 	{
 		if (st.set != set)
 			continue;
+		if (textures.find(st.name) == textures.end())
+		{
+			CCASSERT(false, "texture uniform not set");
+			continue;
+		}
 		for (auto& it : textures.at(st.name))
 		{
 			const auto index = it.first;
 			const auto tex = it.second;
 			if (tex && index < st.count)
 			{
-				tex->getTextureUsage();
 				//log("%s: bind texture 0x%x to uniform %s, slot=%d, size=(%d, %d)",
 				//	__FUNCTION__, (intptr_t)getHandler(tex), st.name.c_str(), index,
 				//	getHandler(tex)->getWidth(), getHandler(tex)->getHeight());
