@@ -247,8 +247,6 @@ void Director::setGLDefaultValues()
 // Draw the Scene
 void Director::drawScene()
 {
-    _renderer->beginFrame();
-
     // calculate "global" dt
     calculateDeltaTime();
     
@@ -256,6 +254,8 @@ void Director::drawScene()
     {
         _openGLView->pollEvents();
     }
+
+    _renderer->beginFrame();
 
     //tick before glClear: issue #533
     if (! _paused)
