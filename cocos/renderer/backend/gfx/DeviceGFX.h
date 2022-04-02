@@ -69,6 +69,133 @@ public:
 	 */
 	Program* newProgram(const std::string& vertexShader, const std::string& fragmentShader) override;
 
+	enum class Type : uint32_t {
+		UNKNOWN,
+		BOOL,
+		BOOL2,
+		BOOL3,
+		BOOL4,
+		INT,
+		INT2,
+		INT3,
+		INT4,
+		UINT,
+		UINT2,
+		UINT3,
+		UINT4,
+		FLOAT,
+		FLOAT2,
+		FLOAT3,
+		FLOAT4,
+		MAT2,
+		MAT2X3,
+		MAT2X4,
+		MAT3X2,
+		MAT3,
+		MAT3X4,
+		MAT4X2,
+		MAT4X3,
+		MAT4,
+		// combined image samplers
+		SAMPLER1D,
+		SAMPLER1D_ARRAY,
+		SAMPLER2D,
+		SAMPLER2D_ARRAY,
+		SAMPLER3D,
+		SAMPLER_CUBE,
+		// sampler
+		SAMPLER,
+		// sampled textures
+		TEXTURE1D,
+		TEXTURE1D_ARRAY,
+		TEXTURE2D,
+		TEXTURE2D_ARRAY,
+		TEXTURE3D,
+		TEXTURE_CUBE,
+		// storage images
+		IMAGE1D,
+		IMAGE1D_ARRAY,
+		IMAGE2D,
+		IMAGE2D_ARRAY,
+		IMAGE3D,
+		IMAGE_CUBE,
+		// input attachment
+		SUBPASS_INPUT,
+		COUNT,
+	};
+	enum class MemoryAccessBit : uint32_t {
+		NONE = 0,
+		READ_ONLY = 0x1,
+		WRITE_ONLY = 0x2,
+		READ_WRITE = READ_ONLY | WRITE_ONLY,
+	};
+	using MemoryAccess = MemoryAccessBit;
+	enum class ShaderStageFlagBit : uint32_t {
+		NONE = 0x0,
+		VERTEX = 0x1,
+		CONTROL = 0x2,
+		EVALUATION = 0x4,
+		GEOMETRY = 0x8,
+		FRAGMENT = 0x10,
+		COMPUTE = 0x20,
+		ALL = 0x3f,
+	};
+	using ShaderStageFlags = ShaderStageFlagBit;
+	struct Uniform {
+		std::string name;
+		Type     type{ Type::UNKNOWN };
+		uint32_t count{ 0 };
+	};
+	using UniformList = std::vector<Uniform>;
+	struct UniformBlock {
+		uint32_t    set{ 0 };
+		uint32_t    binding{ 0 };
+		std::string name;
+		UniformList members;
+		uint32_t    count{ 0 };
+	};
+	using UniformBlockList = std::vector<UniformBlock>;
+	struct UniformSamplerTexture {
+		uint32_t set{ 0 };
+		uint32_t binding{ 0 };
+		std::string name;
+		Type     type{ Type::UNKNOWN };
+		uint32_t count{ 0 };
+	};
+	using UniformSamplerTextureList = std::vector<UniformSamplerTexture>;
+	struct UniformStorageBuffer {
+		uint32_t     set{ 0 };
+		uint32_t     binding{ 0 };
+		std::string  name;
+		uint32_t     count{ 0 };
+		MemoryAccess memoryAccess{ MemoryAccessBit::READ_WRITE };
+	};
+	using UniformStorageBufferList = std::vector<UniformStorageBuffer>;
+	struct ShaderStage {
+		ShaderStageFlagBit stage{ ShaderStageFlagBit::NONE };
+		std::string        source;
+	};
+	using ShaderStageList = std::vector<ShaderStage>;
+	struct Attribute {
+		std::string    name;
+		VertexFormat   format{ VertexFormat::FLOAT };
+		bool     isNormalized{ false };
+		uint32_t stream{ 0 };
+		bool     isInstanced{ false };
+		uint32_t location{ 0 };
+	};
+	using AttributeList = std::vector<Attribute>;
+	struct ShaderInfo {
+		std::string                name;
+		ShaderStageList            stages;
+		AttributeList              attributes;
+		UniformBlockList           blocks;
+		UniformStorageBufferList   buffers;
+		UniformSamplerTextureList  samplerTextures;
+	};
+
+	Program* newProgram(const ShaderInfo& info);
+
 	void* getWindowHandle() const { return windowHandle; }
 	uint32_t getWidth() const { return width; }
 	uint32_t getHeight() const { return height; }
@@ -81,7 +208,7 @@ protected:
 	 * @param source Specifies shader source.
 	 * @return A ShaderModule object.
 	 */
-	ShaderModule* newShaderModule(ShaderStage stage, const std::string& source) override;
+	ShaderModule* newShaderModule(backend::ShaderStage stage, const std::string& source) override;
 
 	static void initBuiltinShaderInfo();
 };

@@ -102,7 +102,7 @@ TextureBackend* DeviceGFX::newTexture(const TextureDescriptor& descriptor)
     }
 }
 
-ShaderModule* DeviceGFX::newShaderModule(ShaderStage stage, const std::string& source)
+ShaderModule* DeviceGFX::newShaderModule(backend::ShaderStage stage, const std::string& source)
 {
     return new (std::nothrow) ShaderModuleGFX(stage, source);
 }
@@ -118,6 +118,73 @@ DepthStencilState* DeviceGFX::createDepthStencilState(const DepthStencilDescript
 RenderPipeline* DeviceGFX::newRenderPipeline()
 {
     return new (std::nothrow) RenderPipelineGFX();
+}
+
+Program* DeviceGFX::newProgram(const ShaderInfo& info)
+{
+	cc::gfx::ShaderInfo inf;
+	inf.name = info.name;
+	for (const auto& s : info.stages)
+	{
+		cc::gfx::ShaderStage stage;
+		stage.stage = (decltype(stage.stage))s.stage;
+		stage.source = s.source;
+		inf.stages.push_back(stage);
+	}
+	for (const auto& a : info.attributes)
+	{
+		cc::gfx::Attribute attribute;
+		attribute.name = a.name;
+		attribute.format = UtilsGFX::toAttributeType(a.format);
+		attribute.isNormalized = a.isNormalized;
+		attribute.stream = a.stream;
+		attribute.isInstanced = a.isInstanced;
+		attribute.location = a.location;
+		inf.attributes.push_back(attribute);
+	}
+	for (const auto& b : info.blocks)
+	{
+		cc::gfx::UniformBlock block;
+		block.set = b.set;
+		block.binding = b.binding;
+		block.name = b.name;
+		block.count = b.count;
+		for (const auto& u : b.members)
+		{
+			cc::gfx::Uniform uniform;
+			uniform.name = u.name;
+			uniform.type = (decltype(uniform.type))u.type;
+			uniform.count = u.count;
+			block.members.push_back(uniform);
+		}
+		inf.blocks.push_back(block);
+	}
+	for (const auto& b : info.buffers)
+	{
+		cc::gfx::UniformStorageBuffer buffer;
+		buffer.set = b.set;
+		buffer.binding = b.binding;
+		buffer.name = b.name;
+		buffer.count = b.count;
+		buffer.memoryAccess = (decltype(buffer.memoryAccess))b.memoryAccess;
+		inf.buffers.push_back(buffer);
+	}
+	for (const auto& s : info.samplerTextures)
+	{
+		cc::gfx::UniformSamplerTexture st;
+		st.set = s.set;
+		st.binding = s.binding;
+		st.name = s.name;
+		st.type = (decltype(st.type))s.type;
+		st.count = s.count;
+		inf.samplerTextures.push_back(st);
+	}
+	auto p = new ProgramGFX(inf);
+	if (p && !p->isValid())
+	{
+		CC_SAFE_DELETE(p);
+	}
+	return p;
 }
 
 static std::unordered_map<std::size_t, cc::gfx::AttributeList> BuiltinShaderAttributes;
