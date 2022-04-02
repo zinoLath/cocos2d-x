@@ -71,8 +71,7 @@ CommandBufferGFX::~CommandBufferGFX()
 
 void CommandBufferGFX::beginFrame()
 {
-	//NOTE: default FBO should be created after 'acquire'
-	//BUG: got error if window is resized on vulkan
+	//BUG: rendering stopped occasionally on vulkan
 	if (_screenResized)
 	{
 		const auto view = (GLViewImpl*)Director::getInstance()->getOpenGLView();
@@ -86,12 +85,14 @@ void CommandBufferGFX::beginFrame()
 		DeviceGFX::setSwapchainInfo(hdl, ((DeviceGFX*)DeviceGFX::getInstance())->getVsync(),
 			fsize.width, fsize.height);
 
-		CC_SAFE_DELETE(_defaultFBO);
+		resetDefaultFBO();
+		_currentFBO = _defaultFBO;
 		_screenResized = false;
 	}
+
 	if (swapchains.empty())
 	{
-		const auto d = (DeviceGFX*)backend::Device::getInstance();
+		const auto d = (DeviceGFX*)Device::getInstance();
 		gfx::SwapchainInfo info;
 		info.windowHandle = d->getWindowHandle();
 		info.vsyncMode = d->getVsync() ? gfx::VsyncMode::ON : gfx::VsyncMode::OFF;
@@ -100,6 +101,7 @@ void CommandBufferGFX::beginFrame()
 		const auto sw = gfx::Device::getInstance()->createSwapchain(info);
 		swapchains.push_back(sw);
 	}
+	//NOTE: default FBO should be created after 'acquire'
 	gfx::Device::getInstance()->acquire(swapchains);
 
 	if(!_defaultFBO)
@@ -190,10 +192,6 @@ void CommandBufferGFX::applyRenderPassDescriptor(const RenderPassDescriptor& des
 	rect.y = _viewPort.top;
 	rect.width = _viewPort.width;
 	rect.height = _viewPort.height;
-	if (_scissorEnabled)
-	{
-		rect = _scissorRect;
-	}
 
 	CC_ASSERT(_currentFBO);
 	if (_currentFBO == _defaultFBO)
@@ -202,6 +200,7 @@ void CommandBufferGFX::applyRenderPassDescriptor(const RenderPassDescriptor& des
 	else
 		_currentPass = _currentFBO->getRenderPass();
 	// rect will be both viewport and scissor
+	//NOTE: in vulkan, viewport of the whole render pass is decided here
 	_cb->beginRenderPass(_currentPass, _currentFBO, rect, { color },
 		descirptor.clearDepthValue, (int)descirptor.clearStencilValue);
 }

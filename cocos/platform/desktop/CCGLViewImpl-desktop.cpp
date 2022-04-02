@@ -62,6 +62,15 @@ THE SOFTWARE.
 #include "gfx-base/GFXDef-common.h"
 #include "GFXDeviceManager.h"
 #include "renderer/backend/gfx/DeviceGFX.h"
+#include "base/threading/MessageQueue.h"
+static void GFXBeforeScreenResize()
+{
+    const auto agent = cc::gfx::DeviceAgent::getInstance();
+    if (agent)
+    {
+        agent->getMessageQueue()->kickAndWait();
+    }
+}
 #endif
 
 NS_CC_BEGIN
@@ -732,6 +741,9 @@ void GLViewImpl::updateFrameSize()
             {
                 _retinaFactor = 1;
             }
+#ifdef CC_USE_GFX
+            GFXBeforeScreenResize();
+#endif
             glfwSetWindowSize(_mainWindow, (int)(_screenSize.width * _retinaFactor * _frameZoomFactor), (int)(_screenSize.height *_retinaFactor * _frameZoomFactor));
 
             _isInRetinaMonitor = false;
@@ -1003,13 +1015,18 @@ void GLViewImpl::onGLFWframebuffersize(GLFWwindow* window, int w, int h)
         {
             _retinaFactor = 2;
         }
-
+#ifdef CC_USE_GFX
+        GFXBeforeScreenResize();
+#endif
         glfwSetWindowSize(window, static_cast<int>(frameSizeW * 0.5f * _retinaFactor * _frameZoomFactor), static_cast<int>(frameSizeH * 0.5f * _retinaFactor * _frameZoomFactor));
     }
     else if (std::abs(factorX - 2.0f) < FLT_EPSILON && std::abs(factorY - 2.0f) < FLT_EPSILON)
     {
         _isInRetinaMonitor = false;
         _retinaFactor = 1;
+#ifdef CC_USE_GFX
+        GFXBeforeScreenResize();
+#endif
         glfwSetWindowSize(window, static_cast<int>(frameSizeW * _retinaFactor * _frameZoomFactor), static_cast<int>(frameSizeH * _retinaFactor * _frameZoomFactor));
     }
 }
