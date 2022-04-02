@@ -990,8 +990,8 @@ void Renderer::setRenderPipeline(const PipelineDescriptor& pipelineDescriptor, c
 
 void Renderer::beginRenderPass(RenderCommand* cmd)
 {
-     _commandBuffer->beginRenderPass(_renderPassDescriptor);
      _commandBuffer->setViewport(_viewport.x, _viewport.y, _viewport.w, _viewport.h);
+     _commandBuffer->beginRenderPass(_renderPassDescriptor);
      _commandBuffer->setCullMode(_cullMode);
      _commandBuffer->setWinding(_winding);
      _commandBuffer->setScissorRect(_scissorState.isEnabled, _scissorState.rect.x, _scissorState.rect.y, _scissorState.rect.width, _scissorState.rect.height);
