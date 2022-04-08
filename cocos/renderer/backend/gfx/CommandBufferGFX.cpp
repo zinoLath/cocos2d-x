@@ -247,7 +247,7 @@ void CommandBufferGFX::setWinding(Winding winding)
 void CommandBufferGFX::setIndexBuffer(Buffer* buffer)
 {
 	assert(buffer != nullptr);
-	if (buffer == nullptr)
+	if (buffer == nullptr || _indexBuffer == buffer)
 		return;
 
 	CC_SAFE_RELEASE(_indexBuffer);
