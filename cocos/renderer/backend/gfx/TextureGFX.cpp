@@ -133,6 +133,7 @@ void Texture2DGFX::updateSamplerDescriptor(const SamplerDescriptor& sampler)
 	_sinfo.minFilter = UtilsGFX::toMinFilter(sampler.minFilter, _hasMipmaps, isPow2);
 	_sinfo.addressU = UtilsGFX::toAddressMode(sampler.sAddressMode, isPow2);
 	_sinfo.addressV = UtilsGFX::toAddressMode(sampler.tAddressMode, isPow2);
+	_sinfo.addressW = _sinfo.addressU;
 }
 
 void Texture2DGFX::update(const gfx::BufferDataList& buffers, const gfx::BufferTextureCopyList& regions)
@@ -265,6 +266,7 @@ void TextureCubeGFX::updateSamplerDescriptor(const SamplerDescriptor& sampler)
 	_sinfo.minFilter = UtilsGFX::toMinFilter(sampler.minFilter, _hasMipmaps, isPow2);
 	_sinfo.addressU = UtilsGFX::toAddressMode(sampler.sAddressMode, isPow2);
 	_sinfo.addressV = UtilsGFX::toAddressMode(sampler.tAddressMode, isPow2);
+	_sinfo.addressW = _sinfo.addressU;
 }
 
 void TextureCubeGFX::updateFaceData(TextureCubeFace side, void* data)
