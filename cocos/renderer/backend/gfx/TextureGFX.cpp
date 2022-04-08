@@ -76,7 +76,6 @@ void Texture2DGFX::initWithZeros()
 void Texture2DGFX::resetTexture()
 {
 	CC_SAFE_DELETE(_texture);
-	CC_SAFE_DELETE(_sampler);
 	if (!isParameterValid())
 	{
 		CCASSERT(false, "invalid texture parameter");
