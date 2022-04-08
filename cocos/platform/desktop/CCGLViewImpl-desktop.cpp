@@ -413,6 +413,25 @@ bool GLViewImpl::initWithRect(const std::string& viewName, Rect rect, float fram
 
 #if defined(CC_USE_GFX)
 
+    if (desiredApi != cc::gfx::API::VULKAN && desiredApi != cc::gfx::API::METAL)
+    {
+        if (!gladLoaderLoadEGL(EGL_DEFAULT_DISPLAY) || !gladLoaderLoadGLES2())
+        {
+            ccMessageBox("Failed to load glad", "OpenGL error");
+            return false;
+        }
+        if (!eglGetDisplay)
+        {
+            ccMessageBox("Failed to load glad EGL", "OpenGL error");
+            return false;
+        }
+        if (!glGetError)
+        {
+            ccMessageBox("Failed to load glad GLES", "OpenGL error");
+            return false;
+        }
+    }
+
 	void* hdl = getWindowHandle();
     CC_ASSERT(hdl);
 
@@ -422,15 +441,6 @@ bool GLViewImpl::initWithRect(const std::string& viewName, Rect rect, float fram
     {
         ccMessageBox("Failed to create device", "Error");
         return false;
-    }
-    const auto api = device->getGfxAPI();
-    if (api != cc::gfx::API::VULKAN && api != cc::gfx::API::METAL)
-    {
-        if (!gladLoaderLoadEGL(EGL_DEFAULT_DISPLAY) || !gladLoaderLoadGLES2())
-        {
-            ccMessageBox("Failed to Load glad", "OpenGL error");
-            return false;
-        }
     }
 
     backend::DeviceGFX::setSwapchainInfo(hdl, true, rect.size.width, rect.size.height);
