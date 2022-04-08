@@ -12,7 +12,7 @@ public:
 	BufferGFX(std::size_t size, BufferType type, BufferUsage usage);
 	BufferGFX(const cc::gfx::BufferInfo& bufferInfo);
 	BufferGFX(const cc::gfx::BufferViewInfo& bufferViewInfo);
-        virtual ~BufferGFX();
+	virtual ~BufferGFX();
 
 	void updateData(void* data, std::size_t size) override;
 	void updateSubData(void* data, std::size_t offset, std::size_t size) override;
@@ -27,7 +27,6 @@ private:
 
 	bool _isView = false;
 	cc::gfx::Buffer* _buffer = nullptr;
-	std::vector<uint8_t> _xxdata;
 };
 
 CC_BACKEND_END
