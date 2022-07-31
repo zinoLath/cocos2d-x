@@ -1,0 +1,3 @@
+[submodule "external"]
+	path = external
+	url = https://github.com/zinoLath/cocos2d-x-3rd-party-libs-bin.git
